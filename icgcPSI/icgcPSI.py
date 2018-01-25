@@ -390,7 +390,7 @@ class icgcPSI:
         
         db = self.conectardb 
         query = QSqlQuery(db)
-        if query.exec_('SELECT shortname FROM documentcitation;')==0:
+        if query.exec_('SELECT DISTINCT ON (shortname) shortname FROM documentcitation;')==0:
             self.Missatge(self.tr(u"Error:{}\n".format(query.lastError().text())))
         docs=[]
         docs.append('')
@@ -408,7 +408,7 @@ class icgcPSI:
         '''
         db = self.conectardb 
         query = QSqlQuery(db)
-        if query.exec_('SELECT inspireid FROM geologiccollection;')==0:
+        if query.exec_('SELECT DISTINCT ON (inspireid) inspireid FROM geologiccollection;')==0:
             self.Missatge(self.tr(u"Error:{}\n".format(query.lastError().text())))
         geocol=[]
         while query.next():
@@ -440,7 +440,7 @@ class icgcPSI:
         '''
         db = self.conectardb 
         query = QSqlQuery(db)
-        if query.exec_('SELECT voidtypevalue FROM cl_voidtypevalue;')==0:
+        if query.exec_('SELECT DISTINCT ON (voidtypevalue) voidtypevalue FROM cl_voidtypevalue;')==0:
             self.Missatge(self.tr(u"Error:{}\n".format(query.lastError().text())))
         voids=[]
         voids.append('')
@@ -458,7 +458,7 @@ class icgcPSI:
         '''        
         db = self.conectardb 
         query = QSqlQuery(db)
-        if query.exec_('SELECT name FROM processes;')==0:
+        if query.exec_('SELECT DISTINCT ON (name) name FROM processes;')==0:
             self.Missatge(self.tr(u"Error:{}\n".format(query.lastError().text())))
         processats=[]
         while query.next():
@@ -512,7 +512,9 @@ class icgcPSI:
         db = self.conectardb 
         query = QSqlQuery(db)
         
-        tabla='campaign'  
+        tabla='campaign' 
+        campaingid=self.obtain_max_id(query,tabla,'campaignid')+1 #id campaign        
+        
         id_survey=18
         id_camptype=3
         
@@ -546,8 +548,9 @@ class icgcPSI:
         
         name=self.dlg.QLEcampname.text()
         
-        campos='surveytype,campaigntype,client,client_void,contractor,contractor_void,name'
-        query.prepare('INSERT INTO {} ({}) VALUES (:1,:2,:3,:4,:5,:6,:7);'.format(tabla,campos))
+        campos='campaignid,surveytype,campaigntype,client,client_void,contractor,contractor_void,name'
+        query.prepare('INSERT INTO {} ({}) VALUES (:0,:1,:2,:3,:4,:5,:6,:7);'.format(tabla,campos))
+        query.bindValue(':0',campaingid)
         query.bindValue(':1',id_survey)
         query.bindValue(':2',id_camptype)
         query.bindValue(':3',client)
@@ -626,10 +629,12 @@ class icgcPSI:
         if name=='':
             self.Missatge(self.tr(u"El camp Nom del projecte no pot estar buit"))
             return
-         
-        campos='inspireid,name,collectiontype,reference,reference_void,beginlifespanversion,beginlifespanversion_void,'
+        
+        ide=self.obtain_max_id(query,tabla,'geologiccollectionid')+1
+        campos='geologiccollectionid,inspireid,name,collectiontype,reference,reference_void,beginlifespanversion,beginlifespanversion_void,'
         campos+='endlifespanversion,endlifespanversion_void'
-        query.prepare('INSERT INTO {} ({}) VALUES (:1,:2,:3,:4,:5,:6,:7,:8,:9);'.format(tabla,campos))
+        query.prepare('INSERT INTO {} ({}) VALUES (:0,:1,:2,:3,:4,:5,:6,:7,:8,:9);'.format(tabla,campos))
+        query.bindValue(':0',ide)
         query.bindValue(':1',inspireid) #inspireid
         query.bindValue(':2',name) #name
         query.bindValue(':3',4) #collectiontype
@@ -662,6 +667,7 @@ class icgcPSI:
         db=self.conectardb     #create the connection and the Query        
         query = QSqlQuery(db)
         
+        ide = self.obtain_max_id(query,tabla,'documentcitationid') + 1        
         fecha=str(self.dlg.dateEdit.date().year())+'-'       
         fecha=fecha+str(self.dlg.dateEdit.date().month())+'-' 
         fecha=fecha+str(self.dlg.dateEdit.date().day())
@@ -670,8 +676,9 @@ class icgcPSI:
             self.Missatge(self.tr(u"Els camps informe del projecte o codi estan buits"))
             return
         else:
-            campos='name,shortname,date,link'
-            query.prepare('INSERT INTO {} ({}) VALUES (:1,:2,:3,:4);'.format(tabla,campos)) 
+            campos='documentcitationid,name,shortname,date,link'
+            query.prepare('INSERT INTO {} ({}) VALUES (:0,:1,:2,:3,:4);'.format(tabla,campos)) 
+            query.bindValue(':0',ide)
             query.bindValue(':1',self.dlg.QLEname.text()) #doc name
             query.bindValue(':2',self.dlg.QLEshortname.text()) #doc short name
             query.bindValue(':3',fecha) # doc date
@@ -713,11 +720,12 @@ class icgcPSI:
             if dataprocessat[i][1]=='':
                 dataprocessat[i][1]=None
         
-        campos='inspireid,name,type,documentcitation,documentation_void,processparameter_name,processparameter_name_void'
+        campos='processesid,inspireid,name,type,documentcitation,documentation_void,processparameter_name,processparameter_name_void'
         campos+=',processparameter_description,processparameter_description_void,responsibleparty,responsibleparty_void'
         campos+=',pixelarea,satellite,orbit,imagenum,firstimage,lastimage,date,incidenceangle'
         
-        query.prepare('INSERT INTO {} ({}) VALUES (:1,:2,:3,:4,:5,:6,:7,:8,:9,:10,:11,:12,:13,:14,:15,:16,:17,:18,:19);'.format(tabla,campos)) #no check nada
+        query.prepare('INSERT INTO {} ({}) VALUES (:0,:1,:2,:3,:4,:5,:6,:7,:8,:9,:10,:11,:12,:13,:14,:15,:16,:17,:18,:19);'.format(tabla,campos)) #no check nada
+        query.bindValue(':0',ide)
         query.bindValue(':1',ide) #inspire id
         query.bindValue(':2',dataprocessat[0][1]) #name
         query.bindValue(':3',dataprocessat[1][1]) #type 
@@ -936,11 +944,11 @@ class icgcPSI:
         geometry='SRID=25831;POLYGON(({} {},{} {},{} {},{} {},{} {}))'.format(U1[0],U1[1],
                                                             U2[0],U2[1],U3[0],U3[1],U4[0],U4[1],U5[0],U5[1])
         
-        campos='inspireid,distributioninfo,distributioninfo_void,largerwork,largerwork_void,projectedgeometry'
+        campos='geophobjectsetid,inspireid,distributioninfo,distributioninfo_void,largerwork,largerwork_void,projectedgeometry'
         campos+=',geologiccollection,campaign,citation,process'
         
-        query.prepare('INSERT INTO {} ({}) VALUES (:1,:2,:3,:4,:5,ST_GeomFromEWKT(:6),:7,:8,:9,:10);'.format(tabla,campos))
-
+        query.prepare('INSERT INTO {} ({}) VALUES (:0,:1,:2,:3,:4,:5,ST_GeomFromEWKT(:6),:7,:8,:9,:10);'.format(tabla,campos))
+        query.bindValue(':0',ide)
         query.bindValue(':1',self.dlg.lEgeosetinspireid.text()) #inspireid
         query.bindValue(':2',distribuinfo) #distribuinfo
         query.bindValue(':3',distribuinfo_void) #distribuinfo_void
@@ -968,9 +976,11 @@ class icgcPSI:
         '''
         error=False
         tabla='observationresult'
-        campos='observation,name,value'
-        query.prepare('INSERT INTO {} ({}) VALUES (:1,:2,:3);'.format(tabla,campos))
-
+        ide=ide=self.obtain_max_id(query,tabla,'observationresultid')+1
+        
+        campos='observationresultid,observation,name,value'
+        query.prepare('INSERT INTO {} ({}) VALUES (:0,:1,:2,:3);'.format(tabla,campos))
+        query.bindValue(':0',ide)
         query.bindValue(':1',ideobser) #id observation
         query.bindValue(':2',name) #name
         query.bindValue(':3',data) #value
@@ -992,8 +1002,9 @@ class icgcPSI:
         ide=ide=self.obtain_max_id(query,tabla,'observationid')+1
         data=dates[1:5]+'-'+dates[5:7]+'-'+dates[-2:]
         
-        campos='phenomenontime,samplingfeature'
-        query.prepare('INSERT INTO {} ({}) VALUES (:1,:2);'.format(tabla,campos))
+        campos='observationid,phenomenontime,samplingfeature'
+        query.prepare('INSERT INTO {} ({}) VALUES (:0,:1,:2);'.format(tabla,campos))
+        query.bindValue(':0',ide)
         query.bindValue(':1',data) #phenomenontime
         query.bindValue(':2',idesp) #id samplingfeature
         if query.exec_()==0:
@@ -1014,10 +1025,12 @@ class icgcPSI:
         '''        
         tabla='samplingresult'
         tipo=['_VEL','_V_STDEV','_COH']
+        ide=self.obtain_max_id(query,tabla,'samplingresultid')+1
         
-        campos='samplingfeature,name,value'
+        campos='samplingresultid,samplingfeature,name,value'
         for i in range(3):
-            query.prepare('INSERT INTO {} ({}) VALUES (:1,:2,:3);'.format(tabla,campos))
+            query.prepare('INSERT INTO {} ({}) VALUES (:0,:1,:2,:3);'.format(tabla,campos))
+            query.bindValue(':0',ide+i)
             query.bindValue(':1',idesp) #id sampling feature
             query.bindValue(':2',name+tipo[i]) #name
             query.bindValue(':3',datos[i]) #vel, vel_std o coher
@@ -1041,8 +1054,9 @@ class icgcPSI:
         begindate=dates[0][1:5]+'-'+dates[0][5:7]+'-'+dates[0][-2:]
         enddate=dates[1][1:5]+'-'+dates[1][5:7]+'-'+dates[1][-2:]
      
-        campos='spatialsamplingfeature,validtime_begin,validtime_end'
-        query.prepare('INSERT INTO {} ({}) VALUES (:1,:2,:3);'.format(tabla,campos))
+        campos='samplingfeatureid,spatialsamplingfeature,validtime_begin,validtime_end'
+        query.prepare('INSERT INTO {} ({}) VALUES (:0,:1,:2,:3);'.format(tabla,campos))
+        query.bindValue(':0',ide)
         query.bindValue(':1',idespsamp) #id spatialsamplingfeature
         query.bindValue(':2',begindate) # begin date
         query.bindValue(':3',enddate) # end date
@@ -1063,8 +1077,9 @@ class icgcPSI:
         tabla = 'spatialsamplingfeature'
         ide=self.obtain_max_id(query,tabla,'spatialsamplingid')+1
      
-        campos='geophobject,geophobjectset'
-        query.prepare('INSERT INTO {} ({}) VALUES (:1,:2);'.format(tabla,campos))
+        campos='spatialsamplingid,geophobject,geophobjectset'
+        query.prepare('INSERT INTO {} ({}) VALUES (:0,:1,:2);'.format(tabla,campos))
+        query.bindValue(':0',ide)
         query.bindValue(':1',idego) #id geophobject
         query.bindValue(':2',idegs) #id geophobjectset
         if query.exec_()==0:
@@ -1088,8 +1103,9 @@ class icgcPSI:
         geometry='POINT({} {})'.format(UTMXY[0],UTMXY[1])
         height=z
         
-        campos='inspireid,geologiccollection,projectedgeometry,height'
-        query.prepare('INSERT INTO {} ({}) VALUES (:1,:2,ST_GeomFromText(:3,:4),:5);'.format(tabla,campos))
+        campos='geophobjectid,inspireid,geologiccollection,projectedgeometry,height'
+        query.prepare('INSERT INTO {} ({}) VALUES (:0,:1,:2,ST_GeomFromText(:3,:4),:5);'.format(tabla,campos))
+        query.bindValue(':0',ide)
         query.bindValue(':1',inspireid) #inspireid
         query.bindValue(':2',idegeocol) # geologiccollection
         query.bindValue(':3',geometry) # geometry
@@ -1203,7 +1219,8 @@ class icgcPSI:
             return
         while query.next():
             datos=query.value(0)
-        
+        if datos=={}:
+            return
         datos=datos.replace('(','')
         datos=datos.replace(')','')
         datos=datos.split(',')
