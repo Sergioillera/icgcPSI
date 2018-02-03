@@ -20,7 +20,7 @@
  *                                                                         *
  ***************************************************************************/
 """
-from PyQt4.QtCore import QSettings, QTranslator, qVersion, QCoreApplication,QDate, Qt
+from PyQt4.QtCore import QSettings, QTranslator, qVersion, QCoreApplication,QDate, Qt, QUrl
 from PyQt4.QtGui import QAction, QIcon, QFileDialog, QMessageBox
 from PyQt4.QtSql import *
 from qgis.core import *
@@ -184,7 +184,12 @@ class icgcPSI:
         #tab 1 buttons-----------------------------------------------------------
         self.dlg.pBloaddoc.clicked.connect(self.write_to_documentcitation)
         self.dlg.pBloadgeocol.clicked.connect(self.write_to_geocol)
-        self.dlg.pBloadcamp.clicked.connect(self.write_to_campaing)
+        self.dlg.pBloadcamp.clicked.connect(self.write_to_campaing) #new campaign
+        
+        self.dlg.campedit.clicked.connect(self.show_campdata) #campaing edit button
+        self.dlg.docedit.clicked.connect(self.show_docdata) #doc edit button
+        self.dlg.geocoledit.clicked.connect(self.show_geocoldata)
+        
             #tab1 checkbuttons
         self.dlg.cBcampanya.stateChanged.connect(self.show_campbutton) #funcion asociada al checkbox campaigns             
         self.dlg.cBdocumentacio.stateChanged.connect(self.show_docbutton) #funcion asociada al checkbox documentacio
@@ -196,8 +201,9 @@ class icgcPSI:
         self.dlg.pBloadcsv.clicked.connect(self.cargar_foldercsvdades) #buscar la carpeta de archivos csv
         self.dlg.pBloadprocessat.clicked.connect(self.write_to_processat) #escribir en la tabla processat
         self.dlg.pBcarregardades.clicked.connect(self.carregar_dades) #iniciar carga de datos 
-            #tab2 checkbuttons
-        self.dlg.cBdades.stateChanged.connect(self.show_dadesbutton) #funcion asociada al checkbox de load dades
+            #tab2 dades campaing combobox
+        self.dlg.CBdadescamp.currentIndexChanged.connect(self.show_geoset)
+        
         #----------------------------------------------------------------------------------
         
         #tab3 buttons-----------------------------------------------------------------------
@@ -235,23 +241,19 @@ class icgcPSI:
         self.dlg.dateEdit.setDate(QDate.currentDate()) #current date in doc calendar
         self.dlg.datepojectinit.setDate(QDate.currentDate()) #current date in inici project
         self.dlg.datepojectfin.setDate(QDate.currentDate()) #current date in end project
-        self.dlg.pBloaddoc.setVisible(False) #doccitation button
-        self.dlg.pBloaddoc.setEnabled(False) 
-        self.dlg.pBloadgeocol.setVisible(False) #projecte (geocol) button
-        self.dlg.pBloadgeocol.setEnabled(False)
-        self.dlg.pBloadcamp.setVisible(False) #campaign button
-        self.dlg.pBloadcamp.setEnabled(False)
+        self.dlg.pBloaddoc.setText('Modificar') #doccitation button
+        self.dlg.pBloadgeocol.setText('Modificar') #projecte (geocol) button
+        self.dlg.pBloadcamp.setText('Modificar') #campaign button
         #----------------------------------------------------------------
         
         #tab2------------------------------------------------------------
         self.dlg.pathcsvprocessat.clear()
         self.dlg.lEloadpath.clear() #clear the label text box (load shp path)
-        self.dlg.pBcarregardades.setVisible(False) #carregar dades button
-        self.dlg.pBcarregardades.setEnabled(False)
         #----------------------------------------------------------------
         
         #tab3------------------------------------------------------------
         self.dlg.campainglist.clear() #clear campaing combobox 
+        self.dlg.CBdadescamp.clear()
         #----------------------------------------------------------------
         
         #tab4------------------------------------------------------------
@@ -291,7 +293,10 @@ class icgcPSI:
 #####ERROR MISSAGE FUNCTION++++++++++++++++++++++++++++++++++++++++++++++++++++
     def Missatge(self,t,title="Error"): #error missatge function
             m = QMessageBox()
-            m.setIcon(QMessageBox.Warning)
+            if title!='Error':
+                m.setIcon(QMessageBox.Information)
+            else:
+                m.setIcon(QMessageBox.Warning)
             m.setWindowTitle(title)
             m.setText(t)
             m.setStandardButtons(QMessageBox.Ok);
@@ -376,6 +381,28 @@ class icgcPSI:
                 exist=True
                 ide= query.value(0)
             return exist,ide
+            
+    def fromidtovoid(self,query,ide):
+        if query.exec_('SELECT voidtypevalue FROM cl_voidtypevalue WHERE voidtypevalueid={};'.format(ide))==0:
+            self.Missatge(self.tr(u"Error al consultar voidtypevalue des de id\n")+query.lastError().text())
+            error=True
+            return error,[]
+        else:
+            while query.next():
+                void= query.value(0)
+            error=False
+            return error,void
+            
+    def fromidtodocument(self,query,ide):
+        if query.exec_('SELECT name FROM documentcitation WHERE documentcitationid={};'.format(ide))==0:
+            self.Missatge(self.tr(u"Error al consultar documentcitation des de id\n")+query.lastError().text())
+            error=True
+            return error,[]
+        else:
+            while query.next():
+                void= query.value(0)
+            error=False
+            return error,void
         
       
 #---------------------------------------------------------------------------------------
@@ -390,7 +417,7 @@ class icgcPSI:
         
         db = self.conectardb 
         query = QSqlQuery(db)
-        if query.exec_('SELECT DISTINCT ON (shortname) shortname FROM documentcitation;')==0:
+        if query.exec_('SELECT DISTINCT ON (name) name FROM documentcitation;')==0:
             self.Missatge(self.tr(u"Error:{}\n".format(query.lastError().text())))
         docs=[]
         docs.append('')
@@ -399,6 +426,7 @@ class icgcPSI:
         self.dlg.CBshortnamedoccit.addItems(docs)
         self.dlg.CBsprojdoccit.addItems(docs)
         self.dlg.CBdoccitdades.addItems(docs)
+        #self.dlg.CBdistnfo.addItems(docs)
         
         
     def show_bd_geocol(self):
@@ -408,9 +436,10 @@ class icgcPSI:
         '''
         db = self.conectardb 
         query = QSqlQuery(db)
-        if query.exec_('SELECT DISTINCT ON (inspireid) inspireid FROM geologiccollection;')==0:
+        if query.exec_('SELECT DISTINCT ON (name) name FROM geologiccollection;')==0:
             self.Missatge(self.tr(u"Error:{}\n".format(query.lastError().text())))
         geocol=[]
+        geocol.append('')
         while query.next():
             geocol.append(str(query.value(0)))
         self.dlg.CBgeocol.addItems(geocol)
@@ -427,11 +456,13 @@ class icgcPSI:
         if query.exec_('SELECT name FROM campaign;')==0:
            self.Missatge(self.tr(u"Error:{}\n".format(query.lastError().text())))
         campaings=[]
+        campaings.append('')
         while query.next():
             campaings.append(str(query.value(0)))
         self.dlg.CBcamp.addItems(campaings)
         self.dlg.CBcampdades.addItems(campaings)
         self.dlg.campainglist.addItems(campaings)
+        self.dlg.CBdadescamp.addItems(campaings)
         
         
     def show_void(self):
@@ -449,8 +480,10 @@ class icgcPSI:
         self.dlg.CBprojecvoid.addItems(voids) #table I,projecte void
         self.dlg.CBclient_void.addItems(voids) #table I, campign client void
         self.dlg.CBcontractor_void.addItems(voids) #table I, contractor client void
-        self.dlg.CBdistnfo_void.addItems(voids) #table II, distribution info (metadades) void
         self.dlg.CBinformevoid.addItems(voids)
+        self.dlg.CBlargework_void.addItems(voids) #tble II largework_void (codi projecte)
+        self.dlg.CBdistnfo_void.addItems(voids)
+        
         
     def show_processats(self):
         '''
@@ -465,56 +498,251 @@ class icgcPSI:
             processats.append(str(query.value(0)))
         self.dlg.CBprocessats.addItems(processats) #table II, list of processats
         
+    def show_geoset(self):
+        if self.dlg.CBdadescamp.currentText()==None or self.dlg.CBdadescamp.currentText()=='':  
+            pass
+        else:
+            #si la campaña existe, buscar los geosets asociados a ella
+            db = self.conectardb 
+            query = QSqlQuery(db)
+            
+            #buscar la campaña id
+            error,idcamp=self.isinbd(query,'campaign','name',self.dlg.CBdadescamp.currentText(),'campaignid') 
+            if error==0:
+                self.Missatge(self.tr(u"Error buscant la ID de la campanya: {}".format(self.dlg.CBdadescamp.currentText())))
+                return
+            
+            if query.exec_('SELECT DISTINCT ON (InspireId) InspireId FROM geophobjectset WHERE geophobjectset.campaign={};'.format(idcamp))==0:
+                self.Missatge(self.tr(u"Error:{}\n".format(query.lastError().text())))
+            geosets=[]
+            while query.next():
+                geosets.append(str(query.value(0)))
+            self.dlg.CBdadesgeoset.addItems(geosets) #table II, list of processats
         
 #-----------------------------------------------------------------------------------    
 
 # ++++++++++++++++++++++++++ SHOW HIDDEN BUTTONS +++++++++++++++++++++++++++++++++++
-    def show_dadesbutton(self):
-        if self.dlg.cBdades.isChecked():
-            self.dlg.pBcarregardades.setVisible(True)
-            self.dlg.pBcarregardades.setEnabled(True) 
-        else:
-            self.dlg.pBcarregardades.setVisible(False) 
-            self.dlg.pBcarregardades.setEnabled(False)
 
     def show_geocolbutton(self):
         if self.dlg.cBgeocol.isChecked():
-            self.dlg.pBloadgeocol.setVisible(True)
-            self.dlg.pBloadgeocol.setEnabled(True) 
+            self.dlg.pBloadgeocol.setText('Carregar')
+            self.dlg.geocoledit.setVisible(False)
+            self.dlg.geocoledit.setEnabled(False) 
         else:
-            self.dlg.pBloadgeocol.setVisible(False) 
-            self.dlg.pBloadgeocol.setEnabled(False) 
+            self.dlg.pBloadgeocol.setText('Modificar')
+            self.dlg.geocoledit.setVisible(True) 
+            self.dlg.geocoledit.setEnabled(True) 
 
     def show_docbutton(self):
         if self.dlg.cBdocumentacio.isChecked():
-            self.dlg.pBloaddoc.setVisible(True) 
-            self.dlg.pBloaddoc.setEnabled(True) 
+            self.dlg.pBloaddoc.setText('Carregar')
+            self.dlg.docedit.setVisible(False) 
+            self.dlg.docedit.setEnabled(False) 
         else:
-            self.dlg.pBloaddoc.setVisible(False) 
-            self.dlg.pBloaddoc.setEnabled(False) 
+            self.dlg.pBloaddoc.setText('Modificar')
+            self.dlg.docedit.setVisible(True) 
+            self.dlg.docedit.setEnabled(True) 
             
     def show_campbutton(self):
         if self.dlg.cBcampanya.isChecked():
-            self.dlg.pBloadcamp.setVisible(True) 
-            self.dlg.pBloadcamp.setEnabled(True)
+            self.dlg.pBloadcamp.setText('Carregar') 
+            self.dlg.campedit.setVisible(False)
+            self.dlg.campedit.setEnabled(False)
         else:
-            self.dlg.pBloadcamp.setVisible(False) 
-            self.dlg.pBloadcamp.setEnabled(False)
+            self.dlg.pBloadcamp.setText('Modificar')
+            self.dlg.campedit.setVisible(True)
+            self.dlg.campedit.setEnabled(True)
 
 #----------------------------------------------------------------------------------
         
 # ++++++++++++++++++++++++++  TABLE I FUNCTIONS +++++++++++++++++++++++++++++++++++
 
+    def show_geocoldata(self):
+        '''
+        Docstring: mostrar en los labels correspondientes de la primera pestaña los datos asociados
+        a la tabla geologiccollection para poderla modificar
+        '''
+        db = self.conectardb 
+        query = QSqlQuery(db)        
+        
+        #set to 0 some combobox
+        self.dlg.CBsprojdoccit.setCurrentIndex(0)
+        self.dlg.CBinformevoid.setCurrentIndex(0) 
+        self.dlg.CBprojecvoid.setCurrentIndex(0) 
+        
+        name=self.dlg.CBgeocol.currentText()
+        datos={}
+        campos='inspireid,reference,reference_void,beginlifespanversion,beginlifespanversion_void,endlifespanversion,endlifespanversion_void'
+        if query.exec_('SELECT ({}) FROM geologiccollection WHERE geologiccollection.name=\'{}\';'.format(campos,name))==0:
+            self.Missatge(self.tr(u"Error al buscar informacio de la geologiccollection\n")+query.lastError().text())
+            return
+        while query.next():
+            datos=query.value(0)
+        if datos=={}:
+            return
+        datos=datos.replace('(','')
+        datos=datos.replace(')','')
+        datos=datos.split(',')
+        
+        #populate the labels
+        self.dlg.QLEprojectcodi.clear()
+        self.dlg.QLEprojectcodi.setText(datos[0]) #inspire id (codi projecte)
+        self.dlg.QLEprojectname.clear()
+        self.dlg.QLEprojectname.setText(name) #name (nombre projecte)
+        
+        #documentacion        
+        if datos[1]=='': #no documentacion asociada
+            self.dlg.CBsprojdoccit.setCurrentIndex(0) #la documentacion a 0
+            error,void_doc=self.fromidtovoid(query,datos[2]) #nodumentation void
+            if error:
+                self.Missatge(self.tr(u"Error a la id nodocument geocollection\n"))
+                return
+            self.dlg.CBinformevoid.setCurrentIndex(self.dlg.CBinformevoid.findText(void_doc))
+            
+        else: #existe documentacion asociada
+            self.dlg.CBsprojdoccit.setCurrentIndex(0) #el void a 0
+            error,docu=self.fromidtodocument(query,datos[1])
+            if error:
+                self.Missatge(self.tr(u"Error a la id documentacio geocollection\n"))
+                return
+            self.dlg.CBsprojdoccit.setCurrentIndex(self.dlg.CBsprojdoccit.findText(docu))   
+        
+        #begin life date
+        year=int(datos[3].split('-') [0])
+        month=int(datos[3].split('-') [1])
+        day=int(datos[3].split('-') [2])
+        self.dlg.datepojectinit.setDate(QDate(year,month,day)) #DD
+
+        if datos[5]=='': #no end date
+            self.dlg.datepojectfin.setDate(QDate.currentDate())
+            error,void_enddate=self.fromidtovoid(query,datos[6]) #enddate_void
+            if error:
+                self.Missatge(self.tr(u"Error a la id enddate geocollection\n"))
+                return
+            self.dlg.CBprojecvoid.setCurrentIndex(self.dlg.CBprojecvoid.findText(void_enddate))
+        else: #existe end date
+            year=int(datos[5].split('-') [0])
+            month=int(datos[5].split('-') [1])
+            day=int(datos[5].split('-') [2])
+            self.dlg.datepojectfin.setDate(QDate(year,month,day))
+            self.dlg.CBprojecvoid.setCurrentIndex(0)
+             
+
+    def show_docdata(self):
+        '''
+        Docstring: mostrar en los labels correspondientes de la primera pestaña los datos asociados 
+        a la documentacion seleccionada para poderla modificar
+        '''
+        db = self.conectardb 
+        query = QSqlQuery(db)
+        
+        name=self.dlg.CBshortnamedoccit.currentText()
+        
+        datos={}
+        campos='name,shortname,date,link'
+        if query.exec_('SELECT ({}) FROM documentcitation WHERE documentcitation.name=\'{}\';'.format(campos,name))==0:
+            self.Missatge(self.tr(u"Error al buscar informacio de la campanya\n")+query.lastError().text())
+            return
+        while query.next():
+            datos=query.value(0)
+        if datos=={}:
+            return
+        datos=datos.replace('(','')
+        datos=datos.replace(')','')
+        datos=datos.split(',')
+
+        #populate the labels
+        self.dlg.QLEname.clear() #name
+        self.dlg.QLEname.setText(datos[0])
+        self.dlg.QLEshortname.clear() #shortname
+        self.dlg.QLEshortname.setText(datos[1])
+        self.dlg.QLElink.clear() #link
+        self.dlg.QLElink.setText(datos[3])
+        #date label
+        year=int(datos[2].split('-') [0])
+        month=int(datos[2].split('-') [1])
+        day=int(datos[2].split('-') [2])
+        self.dlg.dateEdit.setDate(QDate(year,month,day))
+        
+
+    def show_campdata(self):
+        '''
+        Docstring: mostrar en los labels correspondientes de la primera pestaña los datos asociados
+        a la campaña seleccionada para poderlos modificar
+        '''
+        db = self.conectardb 
+        query = QSqlQuery(db)
+
+        name=self.dlg.CBcamp.currentText()
+        if name=='':
+            self.Missatge(self.tr(u"Selecciona una campanya"))
+            return            
+            
+        datos={}
+        campos='name,client,client_void,contractor,contractor_void'           
+        if query.exec_('SELECT ({}) FROM campaign WHERE campaign.name=\'{}\';'.format(campos,name))==0:
+            self.Missatge(self.tr(u"Error al buscar informacio de la campanya\n")+query.lastError().text())
+            return
+        while query.next():
+            datos=query.value(0)
+        if datos=={}:
+            return
+        datos=datos.replace('(','')
+        datos=datos.replace(')','')
+        datos=datos.split(',')
+        
+        #populate the labels
+        self.dlg.QLEcampname.clear() #name
+        self.dlg.QLEcampname.setText(datos[0])
+        self.dlg.QLEclient.clear() #client
+        self.dlg.QLEclient.setText(datos[1])
+        self.dlg.QLEcontractor.clear() #contractor
+        self.dlg.QLEcontractor.setText(datos[3])
+        #los voids
+        if datos[2]!='':
+            error,void_client=self.fromidtovoid(query,datos[2]) #client_void
+            if error:
+                self.Missatge(self.tr(u"Error a la id client\n"))
+                return
+            self.dlg.CBclient_void.setCurrentIndex(self.dlg.CBclient_void.findText(void_client))
+        else:
+            self.dlg.CBclient_void.setCurrentIndex(0)
+        if datos[4]!='':
+            error,void_contractor=self.fromidtovoid(query,datos[4]) #contractor_void
+            if error:
+                self.Missatge(self.tr(u"Error a la id contractant\n"))
+                return
+            self.dlg.CBcontractor_void.setCurrentIndex(self.dlg.CBcontractor_void.findText(void_contractor))
+        else:
+            self.dlg.CBcontractor_void.setCurrentIndex(0)
+        
+        
     def write_to_campaing(self):
         '''
         Docstring: escribir en la tabla campaign los datos de la gui
+        Alterna la funcionalidad con modifcar una campaña ya existente en la base de datos dependiendo
+        de si el combo box esta activo o no
         '''
         db = self.conectardb 
         query = QSqlQuery(db)
         
         tabla='campaign' 
-        campaingid=self.obtain_max_id(query,tabla,'campaignid')+1 #id campaign        
         
+        if self.dlg.cBcampanya.isChecked()==False: #edit camp
+            exist,campaingid=self.isinbd(query,tabla,'name',self.dlg.CBcamp.currentText(),'campaignid')
+            if exist==False:
+                self.Missatge(self.tr(u"El nom de la acampanya no \nexisteix a la base de dades"))
+                return 
+                
+        else: #new camp
+            campaingid=self.obtain_max_id(query,tabla,'campaignid')+1 #id campaign                
+            #check si el nombre esta repetido        
+            name=self.dlg.QLEcampname.text() 
+            for i in range(1,self.dlg.CBcamp.count()):
+                if name == str(self.dlg.CBcamp.itemText(i)): #nombre repetido
+                    self.Missatge(self.tr(u"El nom de la campanya ja existeix"))
+                    return
+                
         id_survey=18
         id_camptype=3
         
@@ -546,27 +774,45 @@ class icgcPSI:
         else:
             contractor_void=None
         
-        name=self.dlg.QLEcampname.text()
-        
         campos='campaignid,surveytype,campaigntype,client,client_void,contractor,contractor_void,name'
-        query.prepare('INSERT INTO {} ({}) VALUES (:0,:1,:2,:3,:4,:5,:6,:7);'.format(tabla,campos))
-        query.bindValue(':0',campaingid)
-        query.bindValue(':1',id_survey)
-        query.bindValue(':2',id_camptype)
-        query.bindValue(':3',client)
-        query.bindValue(':4',client_void)
-        query.bindValue(':5',contractor)
-        query.bindValue(':6',contractor_void)
-        query.bindValue(':7',name)
+
+        if self.dlg.cBcampanya.isChecked()==False: #edit camp
+            name=self.dlg.QLEcampname.text()
+            query.prepare('UPDATE {} SET client=:3,client_void=:4,contractor=:5,contractor_void=:6,name=:7 WHERE campaignid={};'.format(tabla,campaingid))
+            query.bindValue(':3',client)
+            query.bindValue(':4',client_void)
+            query.bindValue(':5',contractor)
+            query.bindValue(':6',contractor_void)
+            query.bindValue(':7',name)
+            
+        else: #new camp
+            query.prepare('INSERT INTO {} ({}) VALUES (:0,:1,:2,:3,:4,:5,:6,:7);'.format(tabla,campos)) 
+            query.bindValue(':0',campaingid)
+            query.bindValue(':1',id_survey)
+            query.bindValue(':2',id_camptype)
+            query.bindValue(':3',client)
+            query.bindValue(':4',client_void)
+            query.bindValue(':5',contractor)
+            query.bindValue(':6',contractor_void)
+            query.bindValue(':7',name)
 
         if query.exec_()==0:
             self.Missatge(self.tr(u"Error al actualitzar la taula {}\n".format(tabla))+query.lastError().text())
             return 
         else:
-            self.Missatge(self.tr(u"Campanya carregada\n"),'Informacio') 
+            if self.dlg.cBcampanya.isChecked()==False:
+                self.Missatge(self.tr(u"Campanya editada\n"),'Informacio')
+                self.dlg.CBcampdades.removeItem(self.dlg.CBcamp.findText(self.dlg.CBcamp.currentText()))
+                self.dlg.campainglist.removeItem(self.dlg.CBcamp.findText(self.dlg.CBcamp.currentText()))
+                self.dlg.CBdadescamp.removeItem(self.dlg.CBcamp.findText(self.dlg.CBcamp.currentText()))
+                self.dlg.CBcamp.removeItem(self.dlg.CBcamp.findText(self.dlg.CBcamp.currentText()))
+            else:
+                self.Missatge(self.tr(u"Campanya carregada\n"),'Informacio') 
+                
             self.dlg.CBcamp.addItems([name])
             self.dlg.CBcampdades.addItems([name])
             self.dlg.campainglist.addItems([name])
+            self.dlg.CBdadescamp.addItems([name])
             self.dlg.QLEcampname.clear()
             self.dlg.QLEcontractor.clear()
             self.dlg.QLEclient.clear()
@@ -581,7 +827,21 @@ class icgcPSI:
         query = QSqlQuery(db)
         
         inspireid=self.dlg.QLEprojectcodi.text()
-        name=self.dlg.QLEprojectname.text()
+        name=self.dlg.QLEprojectname.text()       
+        
+        if self.dlg.cBgeocol.isChecked()==False: #edit geocol
+            exist,geocolid=self.isinbd(query,tabla,'name',self.dlg.CBgeocol.currentText(),'geologiccollectionid')
+            if exist==False:
+                self.Missatge(self.tr(u"El nom de la geocollection no \nexisteix a la base de dades"))
+                return 
+        else:  #new geocol 
+            #check si el nombre esta repetido         
+            for i in range(1,self.dlg.CBgeocol.count()):
+                if name == str(self.dlg.CBgeocol.itemText(i)): #nombre repetido
+                    self.Missatge(self.tr(u"El nom del projecte ja existeix"))
+                    return
+            geocolid=self.obtain_max_id(query,tabla,'geologiccollectionid')+1
+        
         
         #referencia (to doccitation)
         reference=self.dlg.CBsprojdoccit.currentText()
@@ -596,7 +856,7 @@ class icgcPSI:
                    self.Missatge(self.tr(u"Error al buscar el void ide"))
                    return
         else:
-            exist,ide=self.isinbd(query,'documentcitation','shortname',reference,'documentcitationid')
+            exist,ide=self.isinbd(query,'documentcitation','name',reference,'documentcitationid')
             if exist==0:
                 self.Missatge(self.tr(u"Error al buscar la documentcitation ide"))
                 return
@@ -630,11 +890,16 @@ class icgcPSI:
             self.Missatge(self.tr(u"El camp Nom del projecte no pot estar buit"))
             return
         
-        ide=self.obtain_max_id(query,tabla,'geologiccollectionid')+1
+        
         campos='geologiccollectionid,inspireid,name,collectiontype,reference,reference_void,beginlifespanversion,beginlifespanversion_void,'
         campos+='endlifespanversion,endlifespanversion_void'
-        query.prepare('INSERT INTO {} ({}) VALUES (:0,:1,:2,:3,:4,:5,:6,:7,:8,:9);'.format(tabla,campos))
-        query.bindValue(':0',ide)
+        
+        if self.dlg.cBgeocol.isChecked()==False: #edit
+            query.prepare('UPDATE {} SET inspireid=:1,name=:2,reference=:4,reference_void=:5,beginlifespanversion=:6,beginlifespanversion_void=:7,endlifespanversion=:8,endlifespanversion_void=:9 WHERE geologiccollectionid={};'.format(tabla,geocolid))
+        else:        #new
+            query.prepare('INSERT INTO {} ({}) VALUES (:0,:1,:2,:3,:4,:5,:6,:7,:8,:9);'.format(tabla,campos))
+            
+        query.bindValue(':0',geocolid)
         query.bindValue(':1',inspireid) #inspireid
         query.bindValue(':2',name) #name
         query.bindValue(':3',4) #collectiontype
@@ -649,9 +914,15 @@ class icgcPSI:
             self.Missatge(self.tr(u"Error al actualitzar la taula {}\n".format(tabla))+query.lastError().text())
             return
         else:
-            self.Missatge(self.tr(u"Taula Geologiccolection actualitzada\n"),'Informacio') 
-            self.dlg.CBgeocol.addItems([inspireid]) #actualizar el combobox de projectes
-            self.dlg.CBgeocoldades.addItems([inspireid]) #actualizar el combobox de projectes (tab II)
+            if self.dlg.cBgeocol.isChecked()==False: #edit
+                self.Missatge(self.tr(u"Taula Geologiccolection modificada\n"),'Informacio') 
+                self.dlg.CBgeocoldades.removeItem(self.dlg.CBgeocoldades.findText(self.dlg.CBgeocol.currentText())) #remove el combobox de projectes (tab II)
+                self.dlg.CBgeocol.removeItem(self.dlg.CBgeocol.findText(self.dlg.CBgeocol.currentText())) #remove combobox geocol  
+            else: #new
+                self.Missatge(self.tr(u"Afegit registre a la taula Geologiccolection\n"),'Informacio')
+                
+            self.dlg.CBgeocol.addItems([name]) #actualizar el combobox de projectes
+            self.dlg.CBgeocoldades.addItems([name]) #actualizar el combobox de projectes (tab II)
             self.dlg.QLEprojectcodi.clear() #limpiar
             self.dlg.QLEprojectname.clear()
         
@@ -663,11 +934,25 @@ class icgcPSI:
         '''
         # 5 campos a escribir (4 por GUI + ID)      
         tabla='documentcitation'
-        
         db=self.conectardb     #create the connection and the Query        
         query = QSqlQuery(db)
         
-        ide = self.obtain_max_id(query,tabla,'documentcitationid') + 1        
+        if self.dlg.cBdocumentacio.isChecked()==False: #edit doccitation
+            exist,ide=self.isinbd(query,tabla,'name',self.dlg.CBshortnamedoccit.currentText(),'documentcitationid')
+            if exist==False:
+                self.Missatge(self.tr(u"El nom de la documentacio no \nexisteix a la base de dades"))
+                return 
+            
+        else: #new doccitation
+            #check si el nombre ya existe
+            name=self.dlg.QLEname.text()
+            for i in range(1,self.dlg.CBshortnamedoccit.count()):
+                if name == str(self.dlg.CBshortnamedoccit.itemText(i)): #nombre repetido
+                    self.Missatge(self.tr(u"Documentacio amb aquest nom ja existeix"))
+                    return
+            ide = self.obtain_max_id(query,tabla,'documentcitationid') + 1 
+
+        
         fecha=str(self.dlg.dateEdit.date().year())+'-'       
         fecha=fecha+str(self.dlg.dateEdit.date().month())+'-' 
         fecha=fecha+str(self.dlg.dateEdit.date().day())
@@ -675,25 +960,44 @@ class icgcPSI:
         if (self.dlg.QLEname.text() or self.dlg.QLEshortname.text()) =='': 
             self.Missatge(self.tr(u"Els camps informe del projecte o codi estan buits"))
             return
-        else:
+        
+        if self.dlg.cBdocumentacio.isChecked()==False: #edit doccitation
+            name=self.dlg.QLEname.text()
+            query.prepare('UPDATE {} SET name=:2,shortname=:3,date=:4,link=:5 WHERE documentcitationid={};'.format(tabla,ide))
+            query.bindValue(':2',name) #name
+            query.bindValue(':3',self.dlg.QLEshortname.text()) #shortname
+            query.bindValue(':4',fecha) #date
+            query.bindValue(':5',str(self.dlg.QLElink.text())) #link
+
+        else: #new doccitation
             campos='documentcitationid,name,shortname,date,link'
             query.prepare('INSERT INTO {} ({}) VALUES (:0,:1,:2,:3,:4);'.format(tabla,campos)) 
             query.bindValue(':0',ide)
-            query.bindValue(':1',self.dlg.QLEname.text()) #doc name
+            query.bindValue(':1',name) #doc name
             query.bindValue(':2',self.dlg.QLEshortname.text()) #doc short name
             query.bindValue(':3',fecha) # doc date
             query.bindValue(':4',str(self.dlg.QLElink.text())) # doc link
-            if query.exec_()==0:
-                self.Missatge(self.tr(u"Error al actualitzar la taula {}\n".format(tabla))+query.lastError().text())
+            
+        if query.exec_()==0:
+            self.Missatge(self.tr(u"Error al actualitzar la taula {}\n".format(tabla))+query.lastError().text())
+            return
+        else:
+            if self.dlg.cBdocumentacio.isChecked()==False: #edit case
+                self.Missatge(self.tr(u"Documentacio modificada!\n"),'Informacio')
+                self.dlg.CBsprojdoccit.removeItem(self.dlg.CBsprojdoccit.findText(self.dlg.CBshortnamedoccit.currentText())) #update combobox proyecte
+                self.dlg.CBdoccitdades.removeItem(self.dlg.CBdoccitdades.findText(self.dlg.CBshortnamedoccit.currentText())) #update comobox doccittion tab II
+                self.dlg.CBshortnamedoccit.removeItem(self.dlg.CBshortnamedoccit.findText(self.dlg.CBshortnamedoccit.currentText())) #update combobox documentacio
+                #self.dlg.CBdistnfo.removeItem(self.dlg.CBshortnamedoccit.findText(self.dlg.CBshortnamedoccit.currentText())) #update codi informe metaddates
             else:
-                self.Missatge(self.tr(u"Documentacio carregada!\n"),'Informacio')
-                self.dlg.CBshortnamedoccit.addItems([self.dlg.QLEshortname.text()]) #update combobox documentacio
-                self.dlg.CBsprojdoccit.addItems([self.dlg.QLEshortname.text()]) #update combobox proyecte
-                self.dlg.CBdoccitdades.addItems([self.dlg.QLEshortname.text()]) #update comobox doccittion tab II
-                self.dlg.QLEname.clear()
-                self.dlg.QLEshortname.clear()
-                self.dlg.QLElink.clear()
-
+                self.Missatge(self.tr(u"Documentacio carregada!\n"),'Informacio')  
+            self.dlg.CBshortnamedoccit.addItems([name]) #update combobox documentacio
+            self.dlg.CBsprojdoccit.addItems([name]) #update combobox proyecte
+            self.dlg.CBdoccitdades.addItems([name]) #update comobox doccittion tab II
+            #self.dlg.CBdistnfo.addItems([name]) #update codi informe metaddates
+            self.dlg.QLEname.clear()
+            self.dlg.QLEshortname.clear()
+            self.dlg.QLElink.clear()
+            
 
 # +++++++++++++++++++++++++++  TABLE II FUNCTIONS +++++++++++++++++++++++++++++++++
     def write_to_processat(self):
@@ -719,14 +1023,14 @@ class icgcPSI:
         for i in range(len(dataprocessat)):
             if dataprocessat[i][1]=='':
                 dataprocessat[i][1]=None
-        
+       
         campos='processesid,inspireid,name,type,documentcitation,documentation_void,processparameter_name,processparameter_name_void'
         campos+=',processparameter_description,processparameter_description_void,responsibleparty,responsibleparty_void'
         campos+=',pixelarea,satellite,orbit,imagenum,firstimage,lastimage,date,incidenceangle'
         
         query.prepare('INSERT INTO {} ({}) VALUES (:0,:1,:2,:3,:4,:5,:6,:7,:8,:9,:10,:11,:12,:13,:14,:15,:16,:17,:18,:19);'.format(tabla,campos)) #no check nada
         query.bindValue(':0',ide)
-        query.bindValue(':1',ide) #inspire id
+        query.bindValue(':1','es.icgc.ge.psi_'+dataprocessat[0][1]) #inspire id
         query.bindValue(':2',dataprocessat[0][1]) #name
         query.bindValue(':3',dataprocessat[1][1]) #type 
         query.bindValue(':4',dataprocessat[2][1]) #dataprocessat[2][1]) #doccitation
@@ -740,10 +1044,20 @@ class icgcPSI:
         query.bindValue(':12',dataprocessat[10][1]) #pixelarea
         query.bindValue(':13',dataprocessat[11][1]) #satellite   
         query.bindValue(':14',dataprocessat[12][1]) #orbit
-        query.bindValue(':15',dataprocessat[13][1]) #imagenum
-        query.bindValue(':16',dataprocessat[14][1]) #firstimage
-        query.bindValue(':17',dataprocessat[15][1]) #lastimage
-        query.bindValue(':18',dataprocessat[16][1]) #date
+        query.bindValue(':15',int(dataprocessat[13][1])) #imagenum
+        
+        date=dataprocessat[14][1].split('/')
+        fecha=date[2]+'-'+date[1]+'-'+date[0]
+        query.bindValue(':16',fecha) #firstimage
+        
+        date=dataprocessat[15][1].split('/')
+        fecha=date[2]+'-'+date[1]+'-'+date[0]
+        query.bindValue(':17',fecha) #lastimage
+        
+        date=dataprocessat[16][1].split('/')
+        fecha=date[2]+'-'+date[1]+'-'+date[0]
+        query.bindValue(':18',fecha) #date
+        
         query.bindValue(':19',dataprocessat[17][1]) #incident angle
 
         if query.exec_()==0:
@@ -762,35 +1076,78 @@ class icgcPSI:
             observation y observation result.
             Loop sobre archivos en la carpeta y loop sobre filas en cada archivo
         ''' 
-        self.Missatge(self.tr(u"Començant la carrega de dades\n"),'Informacio')
+        if self.dlg.cBdades.isChecked() and self.dlg.cBdadespart.isChecked():
+            self.Missatge(self.tr(u"Error. Les dues opcions estan seleccionades\n"))
+            return
+        elif self.dlg.cBdades.isChecked():
+            self.Missatge(self.tr(u"Començant la carrega de dades\n"),'Informacio') 
+            
+            if self.dlg.lEgeosetinspireid.text()=='':
+                self.Missatge(self.tr(u"Identificador del conjunt en blanc.\n"))
+                return
+                
+        elif self.dlg.cBdadespart.isChecked():
+            self.Missatge(self.tr(u"Començant la carrega de dades.\nAfegint dades a un conjunt existent"),'Informacio')
+        else:
+            self.Missatge(self.tr(u"Error. Selecciona una opcio.\n"))
+            return    
         
         db=self.conectardb     #create the connection and the Query        
         query = QSqlQuery(db)
         
         #obtain campaign id
-        exist,idcampaign = self.isinbd(query,'campaign','name',self.dlg.CBcampdades.currentText(),
-                                       'campaignid')
-        if exist==0:
-            self.Missatge(self.tr(u"Error al buscar el campaign ide"))
-            return
+        if self.dlg.cBdades.isChecked(): #carga total
+        
+            campname=self.dlg.CBcampdades.currentText()
+            exist,idcampaign = self.isinbd(query,'campaign','name',campname,'campaignid')
+            if exist==0:
+                self.Missatge(self.tr(u"Error al buscar el campaign ide"))
+                return
+                
+        else:                           #carga parcial
+        
+            campname=self.dlg.CBdadescamp.currentText()
             
-        exist,idcitation = self.isinbd(query,'documentcitation','shortname', #obtain citation id
+
+        
+        if self.dlg.cBdades.isChecked(): #carga total
+            exist,idcitation = self.isinbd(query,'documentcitation','name', #obtain citation id
                                        self.dlg.CBdoccitdades.currentText(),'documentcitationid')
-        if exist==0:
-            self.Missatge(self.tr(u"Error al buscar el documentcitation ide"))
-            return
-            
-        exist,idprocess = self.isinbd(query,'processes','name', #obtain processes id 
+            if exist==0:
+                self.Missatge(self.tr(u"Error al buscar el documentcitation ide"))
+                return
+
+            exist,idprocess = self.isinbd(query,'processes','name', #obtain processes id 
                                        self.dlg.CBprocessats.currentText(),'processesid')
-        if exist==0:
-            self.Missatge(self.tr(u"Error al buscar el processes ide"))
-            return
-            
-        exist,idgeocol = self.isinbd(query,'geologiccollection','inspireid',#obtain geocol id
+            if exist==0:
+                self.Missatge(self.tr(u"Error al buscar el processes ide"))
+                return
+
+            exist,idgeocol = self.isinbd(query,'geologiccollection','name',#obtain geocol id
                                        self.dlg.CBgeocoldades.currentText(),'geologiccollectionid')
-        if exist==0:
-            self.Missatge(self.tr(u"Error al buscar el geologiccollection ide"))
-            return    
+
+            if exist==0:
+                self.Missatge(self.tr(u"Error al buscar el geologiccollection ide"))
+                return 
+        
+        else: #carga parcial: obtener de la geoset las id's anteriores
+            campos='geophobjectsetid,campaign,citation,process,geologiccollection'
+            if query.exec_('SELECT ({0}) FROM {1} WHERE {2}=\'{3}\';'.format(campos,'geophobjectset','Inspireid',self.dlg.CBdadesgeoset.currentText()))==0:
+                self.Missatge(self.tr(u"Error al consultar geoset\n")+query.lastError().text())
+                return
+            else:
+                ide=[]
+                while query.next():
+                    ide=query.value(0)
+            ide=ide.replace('(','')
+            ide=ide.replace(')','')
+            ide=ide.split(',')
+
+            idcampaign=ide[0]
+            idcitation=ide[1]
+            idprocess=ide[2]
+            idgeocol=ide[3]
+        
         
         path_dir = self.dlg.lEloadpath.text() # folder path
         if path_dir=='':
@@ -814,12 +1171,21 @@ class icgcPSI:
         
             geometrygeoset,maxrows=self.prelectura(path_dir+'\\'+files)
             
-            #write to geophobjectset
-            error,idgeoset = self.write_to_geophobjectset(query,idcampaign,idcitation,idprocess,
-                                                           idgeocol,geometrygeoset) 
-            if error:
-                self.Missatge(self.tr(u"Error al escriure a la taula geocollectionset"))
-                return 
+            #write to geophobjectset 
+            if (num ==0) and self.dlg.cBdades.isChecked(): #carga total 1a vez
+                error,idgeoset = self.write_to_geophobjectset(query,idcampaign,idcitation,idprocess,
+                                                           idgeocol,geometrygeoset)
+                if error:
+                    self.Missatge(self.tr(u"Error al escriure a la taula geocollectionset"))
+                    return 
+            elif (num==0) and self.dlg.cBdadespart.isChecked(): #carga parcial, buscar el idgeoset selecionado
+                error,idgeoset = self.isinbd(query,'geophobjectset','InspireId',#obtain geoset id
+                                       self.dlg.CBdadesgeoset.currentText(),'geophobjectsetid')
+                if error==0:
+                    self.Missatge(self.tr(u"La geophobjectset seleccionada no existeix"))
+                    return
+            else:
+                pass
             
             #progress bar and missages
             self.dlg.progressBar.reset()
@@ -919,7 +1285,7 @@ class icgcPSI:
         ide=self.obtain_max_id(query,tabla,'geophobjectsetid')+1
         
         #distribution void solo si no existe distribution (metadatos)
-        if self.dlg.lEdistrinfo.text()=='': 
+        if self.dlg.CBdistnfo.text()=='': 
             distribuinfo=None
             void=self.dlg.CBdistnfo_void.currentText() #get from the  distribution combobox void text
             if void=='':
@@ -930,13 +1296,23 @@ class icgcPSI:
                 self.Missatge(self.tr(u"Error al buscar el void ide"))
                 return True
         else:
-            distribuinfo=self.dlg.lEdistrinfo.text()
+            distribuinfo=self.dlg.CBdistnfo.text()
             distribuinfo_void=None
             
         #largework void solo si no existe largework (codigo ICGC)
         if self.dlg.lEgeosetlargework.text() =='': 
-            largework_void=0
+            largework=None
+            void=self.dlg.CBlargework_void.currentText()
+            if void=='':
+                self.Missatge(self.tr(u"El camp codi projecte esta buit. Indica el perque"))
+                return True
+            exist,largework_void = self.isinbd(query,'cl_voidtypevalue','voidtypevalue',void,'voidtypevalueid')
+            if exist==0:
+                self.Missatge(self.tr(u"Error al buscar el void ide"))
+                return True
+
         else:
+            largework= self.dlg.lEgeosetlargework.text()
             largework_void=None
         
         U1=geometrygeoset[0][:];U2=geometrygeoset[1][:];U3=geometrygeoset[2][:]
@@ -952,7 +1328,7 @@ class icgcPSI:
         query.bindValue(':1',self.dlg.lEgeosetinspireid.text()) #inspireid
         query.bindValue(':2',distribuinfo) #distribuinfo
         query.bindValue(':3',distribuinfo_void) #distribuinfo_void
-        query.bindValue(':4',self.dlg.lEgeosetlargework.text()) #largework
+        query.bindValue(':4',largework) #largework
         query.bindValue(':5',largework_void) #largework void
         query.bindValue(':6',geometry) #geometry
         query.bindValue(':7',idgeocol) #geocollection id
@@ -1128,7 +1504,12 @@ class icgcPSI:
         '''
         
         #obtener la id de la campaña donde queremos subir los datos
-        exist,idcampaign = self.isinbd(query,'campaign','name',self.dlg.CBcampdades.currentText(),
+        if self.dlg.cBdades.isChecked(): #carga total
+            campname=self.dlg.CBcampdades.currentText()
+        else: #carga parcial
+            campname=self.dlg.CBdadescamp.currentText()
+            
+        exist,idcampaign = self.isinbd(query,'campaign','name',campname,
                                        'campaignid')
         if exist==0:
             self.Missatge(self.tr(u"Error al buscar el campaign ide"))
@@ -1159,6 +1540,15 @@ class icgcPSI:
                 observaciones.append(query.value(0))
         
         todeleteobs=[]
+        archivosLOS=[] #archivos LOS que vas a cargar LOS_ZONA
+        
+        #ordenar la lista de archivos: primero los LOS..., crea lista de todos los archivos LOS que ba a cargar
+        for i,archivo in enumerate(list_files):  
+            if archivo.find('LOS'):
+                list_files.remove(list_files[i])
+                list_files.insert(0,archivo)  
+                archivosLOS.append(archivo.split('_')[2]+'_'+archivo.split('_')[3])
+            
         for archivo in list_files:
             if archivo.find('LOS')>=0:
                 #es tipo LOS
@@ -1170,7 +1560,40 @@ class icgcPSI:
             else:
                 #no es tipo LOS
                 medida=archivo.split('_')[2]+'_'+archivo.split('_')[3] 
-                #borar la observacion si ya existe en la campaña
+                
+                #ver si ya existe un LOS de esa zona en la bdd
+                #o si esta en la lista de los archivos que vas a cargar
+                
+                #filtrar todos  los LOS existentes en la bdd
+                zonaLOS=[]
+                for obs in observaciones:
+                    if obs.find('LOS')>=0:
+                        zonaLOS.append(obs) #contiene [LOS_ZONA] de la bdd
+                
+                #comparar lo que cargas con la bdd y los LOS a cargar
+                existeLOS=False 
+                zonamedida=archivo.split('_')[3]
+
+                for x in range(0,len(zonamedida),4):
+                    try:
+                        existeLOS1=bool((archivosLOS.index('LOS_'+zonamedida[x:x+4])>=0)) #miramos en los archivos a cargar
+                    except ValueError:
+                        existeLOS1=False  
+                        
+                    try:
+                        existeLOS2=bool(zonaLOS.index('LOS_'+zonamedida[x:x+4])>=0) #miramos en las zonas cargadas
+                    except ValueError:
+                        existeLOS2=False
+                        
+                    existeLOS= existeLOS1 or existeLOS2
+                    
+                    if existeLOS==0: #si una zona ya no existe, fuera
+                        error=True
+                        self.Missatge(self.tr(u'Cancelada la carrega de dades,\nno existeix un LOS a la base de dades\n'
+                        'ni es carrega un arxiu LOS associat a aquesta zona.\nZona : {}'.format(zonamedida)))
+                        return error                
+                
+                #borrar la observacion si ya existe en la campaña
                 for obs in observaciones:
                     if (obs.find(medida)>=0) and (obs not in todeleteobs):
                         todeleteobs.append(obs)
@@ -1181,7 +1604,7 @@ class icgcPSI:
             m.setIcon(QMessageBox.Warning)
             m.setWindowTitle('Confirmar')
             m.setText('Alguns arxius a carregar ja estan en la base de dades. \n'
-            +'Avans de carregar s\'esborraran aquestes entrades a la base de dades.\n'
+            +'Abans de carregar s\'esborraran aquestes entrades a la base de dades.\n'
             +'{}\n'.format(todeleteobs)
             +'Estas segur?')
             m.setStandardButtons(QMessageBox.Ok);
@@ -1191,8 +1614,8 @@ class icgcPSI:
             
             if m.exec_()==  QMessageBox.Ok:
                 for nombre in todeleteobs:
-                    idgeoset=self.obtain_geosetid(query,nombre)
-                    self.delete_observation(query,idgeoset)
+                    minid,maxid=self.obtain_spatialsamplingrange(query,nombre)
+                    self.delete_observation(query,minid,maxid)
                 self.Missatge(self.tr(u'Entrades existents en la base de dades borrades'),'Informacio')
                 error=False
             else:
@@ -1307,8 +1730,8 @@ class icgcPSI:
                     item=self.dlg.listWidget.findItems(nombre,Qt.MatchRegExp)
                     self.dlg.listWidget.takeItem(self.dlg.listWidget.row(item[0]))
                     #borrar en la base de datos
-                    idgeoset=self.obtain_geosetid(query,nombre)
-                    self.delete_observation(query,idgeoset)
+                    minide,maxide=self.obtain_spatialsamplingrange(query,nombre)
+                    self.delete_observation(query,minide,maxide)
 
                 self.Missatge(self.tr(u"Entrada esborrada\n"),'Informacio')
             return 
@@ -1324,63 +1747,78 @@ class icgcPSI:
             m.setButtonText(QMessageBox.Ok,"Aceptar")
             m.setButtonText(QMessageBox.Cancel,"Cancelar")
             if m.exec_()==  QMessageBox.Ok:
-                idgeoset=self.obtain_geosetid(query,self.dlg.listWidget.currentItem().text())
-                self.delete_observation(query,idgeoset)
+                minide,maxide=self.obtain_spatialsamplingrange(query,self.dlg.listWidget.currentItem().text())
+                self.delete_observation(query,minide,maxide)
                 self.Missatge(self.tr(u"Entrada esborrada\n"),'Informacio')
                 self.dlg.listWidget.takeItem(self.dlg.listWidget.currentRow())
             return
         
 
-    def delete_observation(self,query,idegeoset):
+    def delete_observation(self,query,minid,maxid):
         '''
         Docstring: funcion que borra las entradas en la tabla que hacen referencia a un tipo de observacion
-        Buscamos la idegeophobjectset (unica para cada tipo de observacion) y borraremos en cascada. ESTE ES EL 
+        Los inputs minid y maxid correspondenden al rango de ides de la tabla spatialsamplingfeature que hacen referencia
+        a un tipo de observacion en la tabla observationresult (ver la funcion obtain_spatialsamplingrange).
+        Estas ides tambien sirven para borrar la tabla geophobject.
         NUCLEO DE LA FUNCION delete_observationname
         '''    
-        #para poder limpiar la tabla geophobject nos hemos de quedar con el rango de id's que comprenden el archivo que queremos borrar
-        if query.exec_('SELECT geophobject FROM spatialsamplingfeature WHERE'
-        + ' public.spatialsamplingfeature.geophobjectset={} ORDER BY geophobject DESC limit 1;'.format(idegeoset))==0:        
-            self.Missatge(self.tr(u"Error al buscar max(id) geophobject a spatialsamplingfeature\n")+query.lastError().text())
-            return 
-        else:
-            while query.next():
-                maxid=query.value(0)
-        if query.exec_('SELECT geophobject FROM spatialsamplingfeature WHERE'
-        + ' public.spatialsamplingfeature.geophobjectset={} ORDER BY geophobject ASC limit 1;'.format(idegeoset))==0:        
-            self.Missatge(self.tr(u"Error al buscar min(id) geophobject a spatialsamplingfeature\n")+query.lastError().text())
-            return 
-        else:
-            while query.next():
-                minid=query.value(0)
         
-        #esta orden limpia las tablas observation/result, samplingresult, samplingfeature y spatialsamplingfeature        
-        if query.exec_('DELETE FROM public.geophobjectset WHERE geophobjectsetid={};'.format(idegeoset))==0:
-            self.Missatge(self.tr(u"Error al borrar l\'entrada a la taula geophobjectset\n")+query.lastError().text())
+        #esta orden limpia las tablas observation/result, samplingresult, samplingfeature y spatialsamplingfeature (en cascada)       
+        if query.exec_('DELETE FROM public.spatialsamplingfeature WHERE spatialsamplingid>={0} and spatialsamplingid<={1};'.format(minid,maxid))==0:
+            self.Missatge(self.tr(u"Error al borrar les entrades a la taula spatialsampling\n")+query.lastError().text())
             return 
         
         #falta borrar la tabla geophobject
-        if query.exec_('DELETE FROM public.geophobject WHERE geophobjectid>={0} and  geophobjectid<={1}'.format(minid,maxid))==0:
+        if query.exec_('DELETE FROM public.geophobject WHERE geophobjectid>={0} and  geophobjectid<={1};'.format(minid,maxid))==0:
             self.Missatge(self.tr(u"Error al borrar la taula geophobject\n")+query.lastError().text())
             return 
         return
         
     
-    def obtain_geosetid(self,query,observacion):
+    def obtain_spatialsamplingrange(self,query,observacion):
         '''
-        Docstring: devuelve el ide de la tabla geophobjectset que corresponde al
-        nombre de la observacion en la observationresult
+        Docstring: devuelve el rango de ides asocociados a la observacion que queremos borrar 
+        de la tabla spatialsamplingfeature
+        para 1 registro= las ides de spatialsampling=geophonject=samplingfeature
+        Hemos de encontrar el numero de registros (las ides) para un tipo de medida en observation result
         '''   
-        
-        if query.exec_('SELECT DISTINCT ON (geophobjectsetid) geophobjectsetid FROM geophobjectset JOIN' 
-        + ' public.spatialsamplingfeature ON public.geophobjectset.geophobjectsetid=public.spatialsamplingfeature.geophobjectset' 
-        + ' JOIN public.samplingfeature ON public.spatialsamplingfeature.spatialsamplingid=public.samplingfeature.spatialsamplingfeature'
-        + ' JOIN public.observation ON public.samplingfeature.samplingfeatureid=public.observation.samplingfeature'
-        + ' JOIN public.observationresult ON public.observation.observationid=public.observationresult.observation'
-        + ' WHERE public.observationresult.name =\'{}\';'.format(observacion))==0:
-            self.Missatge(self.tr(u"Error al consultar geophobjectset des de observationresult name\n")+query.lastError().text())
+        #max(observationid) para un tipo de medida
+        if query.exec_('SELECT public.observationresult.observation FROM public.observationresult WHERE '
+        +'public.observationresult.name=\'{}\' ORDER BY public.observationresult.observationresultid DESC limit 1;'.format(observacion))==0:
+            self.Missatge(self.tr(u"Error al buscar max(observation) en observationresult\n")+query.lastError().text())
             return
-        while query.next():
-            return query.value(0)
+        else:
+            while query.next():
+                maxid=query.value(0)
+                
+        #min(observationid) para un tipo de medida
+        if query.exec_('SELECT public.observationresult.observation FROM public.observationresult WHERE '
+        +'public.observationresult.name=\'{}\' ORDER BY observationresultid ASC limit 1;'.format(observacion))==0:
+            self.Missatge(self.tr(u"Error al buscar min(observation) en observationresult\n")+query.lastError().text())
+            return
+        else:
+            while query.next():
+                minid=query.value(0)
+        print 'observacion',observacion
+        print 'maxid,minid',maxid,minid
+        #buscar el mismo rango en la tabla samplingfeature (esta ya sera equivalente a spatialsamplingfeature) 
+        #max(samplingfeatureid)
+        if query.exec_('SELECT samplingfeature FROM observation WHERE observationid={};'.format(maxid))==0:
+            self.Missatge(self.tr(u"Error al buscar samplingfeatureid en observation (maxid)\n")+query.lastError().text())
+            return
+        else:
+            while query.next():
+                maxidsamp=query.value(0)    
+        
+        #min(samplingfeatureid)
+        if query.exec_('SELECT samplingfeature FROM observation WHERE observationid={};'.format(minid))==0:
+            self.Missatge(self.tr(u"Error al buscar samplingfeatureid en observation (minid)\n")+query.lastError().text())
+            return
+        else:
+            while query.next():
+                minidsamp=query.value(0)        
+        
+        return minidsamp,maxidsamp
 
 
     def show_obsinfo(self):
@@ -1402,8 +1840,8 @@ class icgcPSI:
                     return 
                 while query.next():
                     datos.append(query.value(0))
-            mensaje='Identificador: '+datos[0]+'\n'
-            mensaje=mensaje + 'Codi projecte ICGC: ' + datos[1]+'\n'
+            mensaje='Identificador: '+str(datos[0])+'\n'
+            mensaje=mensaje + 'Codi projecte ICGC: ' + str(datos[1])+'\n'
             
             if query.exec_('SELECT public.geologiccollection.inspireid FROM public.geologiccollection WHERE public.geologiccollection.geologiccollectionid={};'.format(datos[2]))==0:
                 self.Missatge(self.tr(u"Error al buscar informacio de l\'observacion\n")+query.lastError().text())
@@ -1440,8 +1878,6 @@ class icgcPSI:
         m.setButtonText(QMessageBox.Ok,"Aceptar")
         m.setButtonText(QMessageBox.Cancel,"Cancelar")
         if m.exec_()==  QMessageBox.Ok:
-            #obtener todos los geophobjectset correspondientes a esta campaña
-            #y borrarlos uno a uno (para poder limpiar la tabla geophobject)
             if query.exec_('SELECT campaignid FROM public.campaign WHERE public.campaign.name=\'{}\';'.format(registro))==0:
                 self.Missatge(self.tr(u"Error al buscar el nom de la campanya per esborrarlan")+query.lastError().text())
                 return
@@ -1455,18 +1891,96 @@ class icgcPSI:
             while query.next():
                 idgeosetincamp.append(query.value(0))
                 
+            #buscar los processat asociados al geophobjectset que vamos a borrar
+            ideprocessats=[]
+            if query.exec_('SELECT process FROM public.geophobjectset WHERE public.geophobjectset.campaign={};'.format(idcamp))==0:
+                self.Missatge(self.tr(u"Error al buscar els processes a geoset per esborrar-los")+query.lastError().text())
+                return
+            while query.next():
+                ideprocessats.append(query.value(0)) 
+                
+            #buscar los citations asociados al geophobjectset que vamos a borrar
+#            idecits=[]
+#            if query.exec_('SELECT citation FROM public.geophobjectset WHERE public.geophobjectset.campaign={};'.format(idcamp))==0:
+#                self.Missatge(self.tr(u"Error al buscar les citacions a geoset per esborrar-las")+query.lastError().text())
+#                return
+#            while query.next():
+#                idecits.append(query.value(0))
+                        
             for idegeoset in idgeosetincamp:
-                self.delete_observation(query,idegeoset) #borrado todas las tablas por debajo de la campaign
-
+                if query.exec_('SELECT inspireid FROM geophobjectset WHERE geophobjectsetid=\'{}\';'.format( idegeoset))==0:
+                    self.Missatge(self.tr(u"Error al buscar InspireId del geophset per esborrar-lo")+query.lastError().text())
+                    return
+                while query.next():
+                    name=query.value(0) #nombre de geoset para borrarlo del combobox
+                    
+                #buscar los geophobjectid a este geoset (el rango de id's)
+                if query.exec_('SELECT geophobject FROM spatialsamplingfeature WHERE spatialsamplingfeature.geophobjectset={}'.format(idegeoset)
+                + ' ORDER BY geophobject DESC limit 1;')==0:
+                    self.Missatge(self.tr(u"Error al buscar max(gephobject) per borrar\n")+query.lastError().text())
+                    return
+                else:
+                    while query.next():
+                        maxid=query.value(0)    
+                if query.exec_('SELECT geophobject FROM spatialsamplingfeature WHERE spatialsamplingfeature.geophobjectset={}'.format(idegeoset)
+                + ' ORDER BY geophobject ASC limit 1;')==0:
+                    self.Missatge(self.tr(u"Error al buscar min(gephobject) per borrar\n")+query.lastError().text())
+                    return
+                else:
+                    while query.next():
+                        minid=query.value(0)
+                
+                # borra geoset (y todo lo que hay por debajo)
+                if query.exec_('DELETE FROM geophobjectset WHERE geophobjectsetid=\'{}\';'.format(idegeoset)) ==0:
+                    self.Missatge(self.tr(u"Error al borrar la taula geophobjset")+query.lastError().text())
+                    return
+                self.dlg.CBdadesgeoset.removeItem(self.dlg.CBdadesgeoset.findText(name))
+                
+                #borrar geoobject
+                if query.exec_('DELETE FROM geophobject WHERE geophobjectid>={} AND geophobjectid<={};'.format(minid,maxid)) ==0:
+                    self.Missatge(self.tr(u"Error al borrar la taula geophobject")+query.lastError().text())
+                    return
+                    
             #limpiar la tabla campaña
-            if query.exec_('DELETE FROM campaign WHERE name=\'{}\''.format(registro)) ==0:
+            if query.exec_('DELETE FROM campaign WHERE name=\'{}\';'.format(registro)) ==0:
                 self.Missatge(self.tr(u"Error al borrar la taula campanya")+query.lastError().text())
             else:
                 self.Missatge(self.tr('Campanya: {} borrada'.format(registro)),'Informacio')
                 self.dlg.campainglist.removeItem(self.dlg.campainglist.findText(registro))
+                self.dlg.CBdadescamp.removeItem(self.dlg.CBdadescamp.findText(registro))
                 self.dlg.CBcamp.removeItem(self.dlg.CBcamp.findText(registro))
                 self.dlg.CBcampdades.removeItem(self.dlg.CBcampdades.findText(registro))
                 self.dlg.listWidget.clear()
+                
+            #limpiar la tabla processats
+            for ides in ideprocessats:
+                if query.exec_('SELECT inspireid FROM processes WHERE processesid=\'{}\';'.format(ides))==0:
+                    self.Missatge(self.tr(u"Error al buscar InspireId del process per esborrar-lo")+query.lastError().text())
+                    return
+                while query.next():
+                    name=query.value(0)    
+                
+                if query.exec_('DELETE FROM processes WHERE processesid=\'{}\';'.format(ides)) ==0:
+                    self.Missatge(self.tr(u"Error al esborrar el processat de la campanya")+query.lastError().text())
+                    return
+                else:
+                    self.dlg.CBprocessats.removeItem(self.dlg.CBprocessats.findText(name.split('_')[1]))
+                
+            #limpiar la tabla citacions
+#            for ides in idecits:
+#                if query.exec_('SELECT name FROM documentcitation WHERE documentcitationid=\'{}\''.format(ides))==0:
+#                    self.Missatge(self.tr(u"Error al buscar name del citation per esborrar-lo")+query.lastError().text())
+#                    return
+#                while query.next():
+#                    name=query.value(0)
+                
+#                if query.exec_('DELETE FROM documentcitation WHERE documentcitationid=\'{}\''.format(ides)) ==0:
+#                    self.Missatge(self.tr(u"Error al esborrar la documentcitation de la campanya")+query.lastError().text())
+#                    return
+#                else:
+#                    self.dlg.CBdoccitdades.removeItem(self.dlg.CBdoccitdades.findText(name))
+#                    self.dlg.CBshortnamedoccit.removeItem(self.dlg.CBshortnamedoccit.findText(name))
+            
         else:
             pass #cancel option, do nothing
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -1484,12 +1998,21 @@ class icgcPSI:
             return
         else:
             self.dlg.lEshppath.setText(name)
-            uri=name+'?delimiter=;&yField=UTM_y&xField=UTM_x'
-            layer = QgsVectorLayer(uri,'1.40', 'delimitedtext')
+            uri=QUrl.fromLocalFile(name)
+            uri.addQueryItem('type','csv')
+            uri.addQueryItem('delimiter',',')
+            uri.addQueryItem('epsg','32365')
+            uri.addQueryItem('xField','UTM_X')
+            uri.addQueryItem('yField','UTM_Y')
+                
+            layer = QgsVectorLayer(str(uri),name, 'delimitedtext')
             if not layer:
                 self.Missatge(self.tr(u"Error al carregar les dades\n"))
                 return
-                
+            print layer.isValid()
+
+            QgsMapLayerRegistry.instance().addMapLayer(layer)
+            
                 
     def carregarpunts(self):
         self.dlg.lEnselected.clear()
@@ -1527,6 +2050,7 @@ class icgcPSI:
         
         plt.gca().xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m'))
         plt.gca().xaxis.set_major_locator(mdates.DayLocator())
+        plt.hold(True)
         
         col=['coral','blue','red','green']        
         
@@ -1547,18 +2071,44 @@ class icgcPSI:
             
             
             
-        dates=['201601','201602','201604','201606','201608','201610','201612']
+        dates=['201601','201602','201604','201606','201608','201610','201612','201701']
         xlab = [dt.datetime.strptime(d,'%Y%m').date() for d in dates]
         
-        xlim=[dt.datetime.strptime(dates[0]+'01','%Y%m%d').date(),dt.datetime.strptime(dates[-1]+'31','%Y%m%d').date()]
-        
+        xlim=[dt.datetime.strptime('201512'+'01','%Y%m%d').date(),dt.datetime.strptime('201701'+'31','%Y%m%d').date()]
+
         plt.gcf().autofmt_xdate()
         plt.xticks(xlab,rotation=45)
         plt.xlabel('Date',FontSize=16)
         plt.ylabel('mm', Fontsize=16)
         plt.xlim(xlim)
-        plt.legend()
+        chartbox=plt.gca().get_position()
+        plt.ylim([plt.gca().get_ylim()[0]-2,plt.gca().get_ylim()[1]+2])
+
+        coef=1.-0.05*layer.selectedFeatureCount()
+        altura=1.4+0.1*(layer.selectedFeatureCount()-4)
+        plt.gca().set_position([chartbox.x0, chartbox.y0, chartbox.width, chartbox.height*coef])
+        plt.legend(loc='upper right',bbox_to_anchor=(0.9,altura),prop={'size': 10})
         plt.grid()
         plt.show()
         
         
+        
+        
+
+
+'''
+import os.path, glob
+layers=[]
+
+for file in glob.glob('C:\Users\Usuario\Desktop\Solo un LOS\*'): # Change this base path
+  uri = "file:///" + file + "?type=csv&xField=x&yField=y&spatialIndex=no&subsetIndex=no&watchFile=no"
+  vlayer = QgsVectorLayer(uri, os.path.basename(file), "delimitedtext")
+  vlayer.addAttributeAlias(0,'x')
+  vlayer.addAttributeAlias(1,'y')
+  layers.append(vlayer)
+
+QgsMapLayerRegistry.instance().addMapLayers(layers)
+
+
+
+'''

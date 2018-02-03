@@ -301,9 +301,9 @@
   <widget class="QDialogButtonBox" name="button_box">
    <property name="geometry">
     <rect>
-     <x>570</x>
+     <x>630</x>
      <y>630</y>
-     <width>171</width>
+     <width>121</width>
      <height>31</height>
     </rect>
    </property>
@@ -311,13 +311,18 @@
     <font>
      <family>Arial</family>
      <pointsize>10</pointsize>
+     <weight>50</weight>
+     <bold>false</bold>
     </font>
    </property>
    <property name="orientation">
     <enum>Qt::Horizontal</enum>
    </property>
    <property name="standardButtons">
-    <set>QDialogButtonBox::Cancel|QDialogButtonBox::Ok</set>
+    <set>QDialogButtonBox::Close</set>
+   </property>
+   <property name="centerButtons">
+    <bool>true</bool>
    </property>
   </widget>
   <widget class="QLabel" name="label_3">
@@ -408,7 +413,7 @@
      <x>10</x>
      <y>100</y>
      <width>731</width>
-     <height>521</height>
+     <height>531</height>
     </rect>
    </property>
    <property name="palette">
@@ -736,6 +741,19 @@ border-color: rgb(255, 255, 255);
       </property>
       <property name="calendarPopup">
        <bool>true</bool>
+      </property>
+     </widget>
+     <widget class="QPushButton" name="docedit">
+      <property name="geometry">
+       <rect>
+        <x>500</x>
+        <y>20</y>
+        <width>75</width>
+        <height>23</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>Editar</string>
       </property>
      </widget>
     </widget>
@@ -1112,8 +1130,21 @@ indica el  motiu:</string>
        </rect>
       </property>
      </widget>
+     <widget class="QPushButton" name="geocoledit">
+      <property name="geometry">
+       <rect>
+        <x>500</x>
+        <y>25</y>
+        <width>75</width>
+        <height>23</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>Editar</string>
+      </property>
+     </widget>
     </widget>
-    <widget class="QGroupBox" name="groupBox">
+    <widget class="QGroupBox" name="campana">
      <property name="geometry">
       <rect>
        <x>20</x>
@@ -1261,7 +1292,7 @@ indica el  motiu:</string>
        </font>
       </property>
       <property name="text">
-       <string>Carregar nova campanya</string>
+       <string>Carregar nova informació</string>
       </property>
      </widget>
      <widget class="QLabel" name="label_29">
@@ -1340,6 +1371,19 @@ indica el  motiu:</string>
        </rect>
       </property>
      </widget>
+     <widget class="QPushButton" name="campedit">
+      <property name="geometry">
+       <rect>
+        <x>500</x>
+        <y>25</y>
+        <width>75</width>
+        <height>23</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>Editar</string>
+      </property>
+     </widget>
     </widget>
    </widget>
    <widget class="QWidget" name="tab_4">
@@ -1350,7 +1394,7 @@ indica el  motiu:</string>
      <property name="geometry">
       <rect>
        <x>20</x>
-       <y>37</y>
+       <y>17</y>
        <width>131</width>
        <height>31</height>
       </rect>
@@ -1371,7 +1415,7 @@ indica el  motiu:</string>
      <property name="geometry">
       <rect>
        <x>190</x>
-       <y>45</y>
+       <y>25</y>
        <width>341</width>
        <height>21</height>
       </rect>
@@ -1381,7 +1425,7 @@ indica el  motiu:</string>
      <property name="geometry">
       <rect>
        <x>150</x>
-       <y>44</y>
+       <y>24</y>
        <width>31</width>
        <height>20</height>
       </rect>
@@ -1396,13 +1440,13 @@ indica el  motiu:</string>
       <string>...</string>
      </property>
     </widget>
-    <widget class="QGroupBox" name="groupBox_2">
+    <widget class="QGroupBox" name="conjdades">
      <property name="geometry">
       <rect>
        <x>20</x>
-       <y>110</y>
+       <y>60</y>
        <width>681</width>
-       <height>301</height>
+       <height>291</height>
       </rect>
      </property>
      <property name="font">
@@ -1413,24 +1457,6 @@ indica el  motiu:</string>
      <property name="title">
       <string>Conjunt de dades</string>
      </property>
-     <widget class="QPushButton" name="pBcarregardades">
-      <property name="geometry">
-       <rect>
-        <x>600</x>
-        <y>20</y>
-        <width>75</width>
-        <height>30</height>
-       </rect>
-      </property>
-      <property name="font">
-       <font>
-        <pointsize>10</pointsize>
-       </font>
-      </property>
-      <property name="text">
-       <string>Carregar</string>
-      </property>
-     </widget>
      <widget class="QCheckBox" name="cBdades">
       <property name="geometry">
        <rect>
@@ -1454,20 +1480,20 @@ indica el  motiu:</string>
      <widget class="QComboBox" name="CBprocessats">
       <property name="geometry">
        <rect>
-        <x>450</x>
-        <y>90</y>
-        <width>211</width>
-        <height>22</height>
+        <x>120</x>
+        <y>120</y>
+        <width>221</width>
+        <height>20</height>
        </rect>
       </property>
      </widget>
      <widget class="QLabel" name="label_32">
       <property name="geometry">
        <rect>
-        <x>355</x>
-        <y>90</y>
+        <x>20</x>
+        <y>120</y>
         <width>111</width>
-        <height>21</height>
+        <height>19</height>
        </rect>
       </property>
       <property name="font">
@@ -1483,7 +1509,7 @@ indica el  motiu:</string>
       <property name="geometry">
        <rect>
         <x>20</x>
-        <y>60</y>
+        <y>55</y>
         <width>151</width>
         <height>21</height>
        </rect>
@@ -1501,7 +1527,7 @@ indica el  motiu:</string>
       <property name="geometry">
        <rect>
         <x>20</x>
-        <y>90</y>
+        <y>85</y>
         <width>91</width>
         <height>21</height>
        </rect>
@@ -1519,7 +1545,7 @@ indica el  motiu:</string>
       <property name="geometry">
        <rect>
         <x>20</x>
-        <y>120</y>
+        <y>155</y>
         <width>121</width>
         <height>21</height>
        </rect>
@@ -1537,8 +1563,8 @@ indica el  motiu:</string>
       <property name="geometry">
        <rect>
         <x>355</x>
-        <y>120</y>
-        <width>91</width>
+        <y>99</y>
+        <width>100</width>
         <height>21</height>
        </rect>
       </property>
@@ -1548,14 +1574,14 @@ indica el  motiu:</string>
        </font>
       </property>
       <property name="text">
-       <string>Codi informe:</string>
+       <string>Documentació:</string>
       </property>
      </widget>
      <widget class="QLineEdit" name="lEgeosetinspireid">
       <property name="geometry">
        <rect>
         <x>168</x>
-        <y>60</y>
+        <y>55</y>
         <width>171</width>
         <height>21</height>
        </rect>
@@ -1565,7 +1591,7 @@ indica el  motiu:</string>
       <property name="geometry">
        <rect>
         <x>110</x>
-        <y>90</y>
+        <y>85</y>
         <width>231</width>
         <height>22</height>
        </rect>
@@ -1575,7 +1601,7 @@ indica el  motiu:</string>
       <property name="geometry">
        <rect>
         <x>140</x>
-        <y>120</y>
+        <y>155</y>
         <width>201</width>
         <height>21</height>
        </rect>
@@ -1585,7 +1611,7 @@ indica el  motiu:</string>
       <property name="geometry">
        <rect>
         <x>470</x>
-        <y>120</y>
+        <y>99</y>
         <width>191</width>
         <height>22</height>
        </rect>
@@ -1595,7 +1621,7 @@ indica el  motiu:</string>
       <property name="geometry">
        <rect>
         <x>355</x>
-        <y>60</y>
+        <y>55</y>
         <width>131</width>
         <height>21</height>
        </rect>
@@ -1613,7 +1639,7 @@ indica el  motiu:</string>
       <property name="geometry">
        <rect>
         <x>490</x>
-        <y>60</y>
+        <y>55</y>
         <width>171</width>
         <height>22</height>
        </rect>
@@ -1623,9 +1649,9 @@ indica el  motiu:</string>
       <property name="geometry">
        <rect>
         <x>20</x>
-        <y>150</y>
+        <y>184</y>
         <width>151</width>
-        <height>21</height>
+        <height>41</height>
        </rect>
       </property>
       <property name="font">
@@ -1634,24 +1660,15 @@ indica el  motiu:</string>
        </font>
       </property>
       <property name="text">
-       <string>Codi informe metadades:</string>
-      </property>
-     </widget>
-     <widget class="QLineEdit" name="lEdistrinfo">
-      <property name="geometry">
-       <rect>
-        <x>170</x>
-        <y>150</y>
-        <width>171</width>
-        <height>21</height>
-       </rect>
+       <string>Codi informe
+metadades:</string>
       </property>
      </widget>
      <widget class="QLabel" name="label_39">
       <property name="geometry">
        <rect>
         <x>355</x>
-        <y>150</y>
+        <y>189</y>
         <width>151</width>
         <height>31</height>
        </rect>
@@ -1670,86 +1687,170 @@ metadades esta buit</string>
       <property name="geometry">
        <rect>
         <x>510</x>
-        <y>150</y>
+        <y>189</y>
         <width>151</width>
         <height>22</height>
        </rect>
       </property>
      </widget>
-     <widget class="QLabel" name="label_2">
+     <widget class="QLabel" name="label_40">
       <property name="geometry">
        <rect>
-        <x>20</x>
-        <y>200</y>
-        <width>201</width>
-        <height>21</height>
+        <x>355</x>
+        <y>145</y>
+        <width>151</width>
+        <height>31</height>
        </rect>
       </property>
       <property name="font">
        <font>
         <pointsize>10</pointsize>
-        <weight>50</weight>
-        <bold>false</bold>
        </font>
       </property>
       <property name="text">
-       <string>Carpeta on estan les dades (.csv)</string>
+       <string>Motiu camp codi proyecte 
+ICGC esta buit</string>
       </property>
      </widget>
-     <widget class="QPushButton" name="pBloadcsv">
+     <widget class="QComboBox" name="CBlargework_void">
       <property name="geometry">
        <rect>
-        <x>230</x>
-        <y>200</y>
-        <width>31</width>
+        <x>510</x>
+        <y>149</y>
+        <width>151</width>
+        <height>22</height>
+       </rect>
+      </property>
+     </widget>
+     <widget class="QLineEdit" name="CBdistnfo">
+      <property name="geometry">
+       <rect>
+        <x>100</x>
+        <y>194</y>
+        <width>241</width>
+        <height>20</height>
+       </rect>
+      </property>
+     </widget>
+     <widget class="QCheckBox" name="cBdadespart">
+      <property name="geometry">
+       <rect>
+        <x>20</x>
+        <y>230</y>
+        <width>251</width>
         <height>20</height>
        </rect>
       </property>
       <property name="font">
        <font>
-        <pointsize>14</pointsize>
-        <kerning>false</kerning>
-       </font>
-      </property>
-      <property name="text">
-       <string>...</string>
-      </property>
-     </widget>
-     <widget class="QLineEdit" name="lEloadpath">
-      <property name="geometry">
-       <rect>
-        <x>270</x>
-        <y>200</y>
-        <width>391</width>
-        <height>21</height>
-       </rect>
-      </property>
-     </widget>
-     <widget class="QProgressBar" name="progressBar">
-      <property name="geometry">
-       <rect>
-        <x>20</x>
-        <y>260</y>
-        <width>611</width>
-        <height>23</height>
-       </rect>
-      </property>
-      <property name="font">
-       <font>
         <pointsize>10</pointsize>
         <weight>50</weight>
         <bold>false</bold>
        </font>
       </property>
-      <property name="value">
-       <number>0</number>
+      <property name="text">
+       <string>Afegir a un conjunt de dades ja existent</string>
       </property>
      </widget>
+     <widget class="QComboBox" name="CBdadesgeoset">
+      <property name="geometry">
+       <rect>
+        <x>470</x>
+        <y>260</y>
+        <width>191</width>
+        <height>22</height>
+       </rect>
+      </property>
+     </widget>
+     <widget class="QLabel" name="label_41">
+      <property name="geometry">
+       <rect>
+        <x>20</x>
+        <y>260</y>
+        <width>71</width>
+        <height>21</height>
+       </rect>
+      </property>
+      <property name="font">
+       <font>
+        <pointsize>10</pointsize>
+       </font>
+      </property>
+      <property name="text">
+       <string>Campanya:</string>
+      </property>
+     </widget>
+     <widget class="QLabel" name="label_42">
+      <property name="geometry">
+       <rect>
+        <x>355</x>
+        <y>260</y>
+        <width>111</width>
+        <height>21</height>
+       </rect>
+      </property>
+      <property name="font">
+       <font>
+        <pointsize>10</pointsize>
+       </font>
+      </property>
+      <property name="text">
+       <string>Conjunt de dades:</string>
+      </property>
+     </widget>
+     <widget class="QComboBox" name="CBdadescamp">
+      <property name="geometry">
+       <rect>
+        <x>110</x>
+        <y>260</y>
+        <width>231</width>
+        <height>22</height>
+       </rect>
+      </property>
+     </widget>
+    </widget>
+    <widget class="QPushButton" name="pBloadprocessat">
+     <property name="geometry">
+      <rect>
+       <x>620</x>
+       <y>20</y>
+       <width>75</width>
+       <height>30</height>
+      </rect>
+     </property>
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>Carregar</string>
+     </property>
+    </widget>
+    <widget class="QGroupBox" name="groupBox">
+     <property name="geometry">
+      <rect>
+       <x>20</x>
+       <y>355</y>
+       <width>681</width>
+       <height>141</height>
+      </rect>
+     </property>
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+       <weight>50</weight>
+       <bold>false</bold>
+      </font>
+     </property>
+     <property name="title">
+      <string>Dades</string>
+     </property>
      <widget class="QLabel" name="lEstatexport">
       <property name="geometry">
        <rect>
         <x>70</x>
-        <y>230</y>
+        <y>46</y>
         <width>571</width>
         <height>20</height>
        </rect>
@@ -1769,11 +1870,60 @@ border-color: darkgray ;
        <string/>
       </property>
      </widget>
+     <widget class="QPushButton" name="pBloadcsv">
+      <property name="geometry">
+       <rect>
+        <x>230</x>
+        <y>20</y>
+        <width>31</width>
+        <height>20</height>
+       </rect>
+      </property>
+      <property name="font">
+       <font>
+        <pointsize>14</pointsize>
+        <kerning>false</kerning>
+       </font>
+      </property>
+      <property name="text">
+       <string>...</string>
+      </property>
+     </widget>
+     <widget class="QProgressBar" name="progressBar">
+      <property name="geometry">
+       <rect>
+        <x>20</x>
+        <y>76</y>
+        <width>611</width>
+        <height>21</height>
+       </rect>
+      </property>
+      <property name="font">
+       <font>
+        <pointsize>10</pointsize>
+        <weight>50</weight>
+        <bold>false</bold>
+       </font>
+      </property>
+      <property name="value">
+       <number>0</number>
+      </property>
+     </widget>
+     <widget class="QLineEdit" name="lEloadpath">
+      <property name="geometry">
+       <rect>
+        <x>270</x>
+        <y>20</y>
+        <width>391</width>
+        <height>21</height>
+       </rect>
+      </property>
+     </widget>
      <widget class="QLabel" name="label_4">
       <property name="geometry">
        <rect>
         <x>20</x>
-        <y>230</y>
+        <y>46</y>
         <width>41</width>
         <height>21</height>
        </rect>
@@ -1789,24 +1939,62 @@ border-color: darkgray ;
        <string>Estat:</string>
       </property>
      </widget>
-    </widget>
-    <widget class="QPushButton" name="pBloadprocessat">
-     <property name="geometry">
-      <rect>
-       <x>620</x>
-       <y>40</y>
-       <width>75</width>
-       <height>30</height>
-      </rect>
-     </property>
-     <property name="font">
-      <font>
-       <pointsize>10</pointsize>
-      </font>
-     </property>
-     <property name="text">
-      <string>Carregar</string>
-     </property>
+     <widget class="QLabel" name="label_2">
+      <property name="geometry">
+       <rect>
+        <x>20</x>
+        <y>20</y>
+        <width>201</width>
+        <height>21</height>
+       </rect>
+      </property>
+      <property name="font">
+       <font>
+        <pointsize>10</pointsize>
+        <weight>50</weight>
+        <bold>false</bold>
+       </font>
+      </property>
+      <property name="text">
+       <string>Carpeta on estan les dades (.csv)</string>
+      </property>
+     </widget>
+     <widget class="QPushButton" name="pBcarregardades_2">
+      <property name="geometry">
+       <rect>
+        <x>554</x>
+        <y>150</y>
+        <width>121</width>
+        <height>30</height>
+       </rect>
+      </property>
+      <property name="font">
+       <font>
+        <pointsize>10</pointsize>
+       </font>
+      </property>
+      <property name="text">
+       <string>Carregar dades</string>
+      </property>
+     </widget>
+     <widget class="QPushButton" name="pBcarregardades">
+      <property name="geometry">
+       <rect>
+        <x>564</x>
+        <y>103</y>
+        <width>101</width>
+        <height>30</height>
+       </rect>
+      </property>
+      <property name="font">
+       <font>
+        <pointsize>10</pointsize>
+       </font>
+      </property>
+      <property name="text">
+       <string>Carregar dades</string>
+      </property>
+     </widget>
     </widget>
    </widget>
    <widget class="QWidget" name="tab_2">
@@ -2045,7 +2233,7 @@ border-color: darkgray ;
       </font>
      </property>
      <property name="text">
-      <string>Carregar elements seleccionats (min. 1 max. 5):</string>
+      <string>Graficar elements seleccionats (min. 1 max. 5):</string>
      </property>
     </widget>
     <widget class="QLineEdit" name="lEnselected">
