@@ -3,6 +3,7 @@
 ICGC plugin for PSI measurements.
 
 v1.4beta.2 (3/02/2018)
+
 TODO:
 -	Archivos que cargan con nombres erroneos…
 -	Dibujar grafica, no carga el csv… pero si existe una layer ya en qgis, si que permite hacer las graficas.
