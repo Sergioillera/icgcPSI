@@ -1,0 +1,5 @@
+<RCC>
+    <qresource prefix="/plugins/icgcPSI" >
+        <file>icon.png</file>
+   <file>icgc.jpg</file>   </qresource>
+</RCC>
