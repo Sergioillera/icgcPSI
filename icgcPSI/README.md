@@ -11,7 +11,9 @@ TODO:
 Nuevas funcionalidades:
 -	Añadida opcion de editar los registros de la tabla campaña, documentcitation y geologiccollection. Nuevo boton editar que carga la info del elemento seleccionado y puedes alterar el registro en la base de datos.
 -	La carga de datos se ha separado en dos partes:
+
 1 La primera parte implica rellenar la tabla geophobjectset.
+
 2 La segunda parte, si ya existe un registro en geophobjectset, puedes directamente cargar los datos ahí seleccionándolo de la campaña adecuada. Se activa con los checkboxes de la tabla II. Asi se pueden añadir nuevos datos a un geoset ya existente.
 
 
