@@ -1,6 +1,0 @@
-driver=QPSQL
-host=localhost
-database=gis_psi_test
-port=5432
-user=postgres
-password=1941987
