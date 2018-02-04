@@ -2,6 +2,15 @@
 
 ICGC plugin for PSI measurements.
 
+v1.4beta.3 (4/02/2018)
+
+Eliminado boton informacio de la observacion. Con el nuevo esquema de solo un geoset, no tiene mucho sentido
+
+TODO:
+-	Archivos que cargan con nombres erroneos…
+-	Dibujar grafica, no carga el csv… pero si existe una layer ya en qgis, si que permite hacer las graficas.
+-	Implementar el ST_Convex_hull para la geometría de todos los puntos.
+
 v1.4beta.2 (3/02/2018)
 
 TODO:
