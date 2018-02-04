@@ -209,7 +209,7 @@ class icgcPSI:
         #tab3 buttons-----------------------------------------------------------------------
         self.dlg.QPBcampinfo.clicked.connect(self.show_campaign_info)
         self.dlg.pBdeleteobs.clicked.connect(self.delete_observationname)
-        self.dlg.QPBobsinfo.clicked.connect(self.show_obsinfo)
+        #self.dlg.QPBobsinfo.clicked.connect(self.show_obsinfo)
         self.dlg.QPBcampdelete.clicked.connect(self.delete_campaign)
         #-----------------------------------------------------------------------------------
         
