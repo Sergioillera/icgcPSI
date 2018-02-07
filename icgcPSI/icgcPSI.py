@@ -426,7 +426,7 @@ class icgcPSI:
         self.dlg.CBshortnamedoccit.addItems(docs)
         self.dlg.CBsprojdoccit.addItems(docs)
         self.dlg.CBdoccitdades.addItems(docs)
-        #self.dlg.CBdistnfo.addItems(docs)
+        self.dlg.CBdistnfo.addItems(docs)
         
         
     def show_bd_geocol(self):
@@ -478,6 +478,7 @@ class icgcPSI:
         while query.next():
             voids.append(str(query.value(0)))
         self.dlg.CBprojecvoid.addItems(voids) #table I,projecte void
+        self.dlg.CBprojecvoid2.addItems(voids) #table I,projecte void
         self.dlg.CBclient_void.addItems(voids) #table I, campign client void
         self.dlg.CBcontractor_void.addItems(voids) #table I, contractor client void
         self.dlg.CBinformevoid.addItems(voids)
@@ -608,11 +609,21 @@ class icgcPSI:
             self.dlg.CBsprojdoccit.setCurrentIndex(self.dlg.CBsprojdoccit.findText(docu))   
         
         #begin life date
-        year=int(datos[3].split('-') [0])
-        month=int(datos[3].split('-') [1])
-        day=int(datos[3].split('-') [2])
-        self.dlg.datepojectinit.setDate(QDate(year,month,day)) #DD
-
+        if datos[3]=='': #no init date
+            self.dlg.datepojectinit.setDate(QDate.currentDate())
+            error,void_initdate=self.fromidtovoid(query,datos[4]) #initdate_void
+            if error:
+                self.Missatge(self.tr(u"Error a la id initdate geocollection\n"))
+                return
+            self.dlg.CBprojecvoid2.setCurrentIndex(self.dlg.CBprojecvoid2.findText(void_initdate))
+        else: #existe init date
+            year=int(datos[3].split('-') [0])
+            month=int(datos[3].split('-') [1])
+            day=int(datos[3].split('-') [2])
+            self.dlg.datepojectinit.setDate(QDate(year,month,day)) #DD
+            self.dlg.CBprojecvoid2.setCurrentIndex(0)
+        
+        #end life date
         if datos[5]=='': #no end date
             self.dlg.datepojectfin.setDate(QDate.currentDate())
             error,void_enddate=self.fromidtovoid(query,datos[6]) #enddate_void
@@ -657,7 +668,7 @@ class icgcPSI:
         self.dlg.QLEshortname.clear() #shortname
         self.dlg.QLEshortname.setText(datos[1])
         self.dlg.QLElink.clear() #link
-        self.dlg.QLElink.setText(datos[3])
+        self.dlg.QLElink.setText(datos[3].replace('"',''))
         #date label
         year=int(datos[2].split('-') [0])
         month=int(datos[2].split('-') [1])
@@ -864,9 +875,22 @@ class icgcPSI:
             void_ide=None
         
         #fecha inicio
-        fechainit=str(self.dlg.datepojectinit.date().year())+'-'       
-        fechainit=fechainit+str(self.dlg.datepojectinit.date().month())+'-' 
-        fechainit=fechainit+str(self.dlg.datepojectinit.date().day())
+        if self.dlg.checkBoxprojectedate2.isChecked():
+            fechainit=None
+            void=self.dlg.CBprojecvoid2.currentText() #get from the  project combobox void text
+            if void=='':
+                self.Missatge(self.tr(u"Indica perque la data inicial esta buida"))
+                return
+            exist,ide = self.isinbd(query,'cl_voidtypevalue','voidtypevalue',void,'voidtypevalueid')
+            if exist==0:
+                self.Missatge(self.tr(u"Error al buscar el void ide"))
+                return
+            fechainit_void=ide
+        else:
+            fechainit=str(self.dlg.datepojectinit.date().year())+'-'       
+            fechainit=fechainit+str(self.dlg.datepojectinit.date().month())+'-' 
+            fechainit=fechainit+str(self.dlg.datepojectinit.date().day())
+            fechainit_void=None
         
         #fecha fin
         if self.dlg.checkBoxprojectedate.isChecked():
@@ -906,7 +930,7 @@ class icgcPSI:
         query.bindValue(':4',reference) #reference--> documentcitation id
         query.bindValue(':5',void_ide) #reference void
         query.bindValue(':6',fechainit) #beginlife
-        query.bindValue(':7',None) #beginlife_void
+        query.bindValue(':7',fechainit_void) #beginlife_void
         query.bindValue(':8',fechafin) #endlife
         query.bindValue(':9',endlife_void) #endlife_void
         
@@ -987,13 +1011,13 @@ class icgcPSI:
                 self.dlg.CBsprojdoccit.removeItem(self.dlg.CBsprojdoccit.findText(self.dlg.CBshortnamedoccit.currentText())) #update combobox proyecte
                 self.dlg.CBdoccitdades.removeItem(self.dlg.CBdoccitdades.findText(self.dlg.CBshortnamedoccit.currentText())) #update comobox doccittion tab II
                 self.dlg.CBshortnamedoccit.removeItem(self.dlg.CBshortnamedoccit.findText(self.dlg.CBshortnamedoccit.currentText())) #update combobox documentacio
-                #self.dlg.CBdistnfo.removeItem(self.dlg.CBshortnamedoccit.findText(self.dlg.CBshortnamedoccit.currentText())) #update codi informe metaddates
+                self.dlg.CBdistnfo.removeItem(self.dlg.CBshortnamedoccit.findText(self.dlg.CBshortnamedoccit.currentText())) #update codi informe metaddates
             else:
                 self.Missatge(self.tr(u"Documentacio carregada!\n"),'Informacio')  
             self.dlg.CBshortnamedoccit.addItems([name]) #update combobox documentacio
             self.dlg.CBsprojdoccit.addItems([name]) #update combobox proyecte
             self.dlg.CBdoccitdades.addItems([name]) #update comobox doccittion tab II
-            #self.dlg.CBdistnfo.addItems([name]) #update codi informe metaddates
+            self.dlg.CBdistnfo.addItems([name]) #update codi informe metaddates
             self.dlg.QLEname.clear()
             self.dlg.QLEshortname.clear()
             self.dlg.QLElink.clear()
@@ -1285,7 +1309,7 @@ class icgcPSI:
         ide=self.obtain_max_id(query,tabla,'geophobjectsetid')+1
         
         #distribution void solo si no existe distribution (metadatos)
-        if self.dlg.CBdistnfo.text()=='': 
+        if self.dlg.CBdistnfo.currentText()=='': 
             distribuinfo=None
             void=self.dlg.CBdistnfo_void.currentText() #get from the  distribution combobox void text
             if void=='':
@@ -1296,7 +1320,11 @@ class icgcPSI:
                 self.Missatge(self.tr(u"Error al buscar el void ide"))
                 return True
         else:
-            distribuinfo=self.dlg.CBdistnfo.text()
+            exist,distribuinfo = self.isinbd(query,'documentcitation','name', #obtain citation id de metadates
+                                       self.dlg.CBdistnfo.currentText(),'documentcitationid')
+            if exist==0:
+                self.Missatge(self.tr(u"Error al buscar la id de les metedades (documentcitation)"))
+                return True 
             distribuinfo_void=None
             
         #largework void solo si no existe largework (codigo ICGC)

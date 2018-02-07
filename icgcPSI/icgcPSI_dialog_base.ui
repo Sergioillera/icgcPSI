@@ -464,13 +464,13 @@
    </property>
    <widget class="QWidget" name="tab">
     <attribute name="title">
-     <string>Carregar nou projecte</string>
+     <string>Carregar nova informació</string>
     </attribute>
     <widget class="QGroupBox" name="Documentacion">
      <property name="geometry">
       <rect>
        <x>20</x>
-       <y>370</y>
+       <y>380</y>
        <width>681</width>
        <height>111</height>
       </rect>
@@ -761,9 +761,9 @@ border-color: rgb(255, 255, 255);
      <property name="geometry">
       <rect>
        <x>20</x>
-       <y>180</y>
+       <y>170</y>
        <width>681</width>
-       <height>191</height>
+       <height>211</height>
       </rect>
      </property>
      <property name="palette">
@@ -981,7 +981,7 @@ border-color: rgb(255, 255, 255);
       <property name="geometry">
        <rect>
         <x>20</x>
-        <y>123</y>
+        <y>136</y>
         <width>161</width>
         <height>21</height>
        </rect>
@@ -999,7 +999,7 @@ border-color: rgb(255, 255, 255);
       <property name="geometry">
        <rect>
         <x>20</x>
-        <y>154</y>
+        <y>170</y>
         <width>191</width>
         <height>21</height>
        </rect>
@@ -1017,7 +1017,7 @@ border-color: rgb(255, 255, 255);
       <property name="geometry">
        <rect>
         <x>370</x>
-        <y>150</y>
+        <y>166</y>
         <width>151</width>
         <height>31</height>
        </rect>
@@ -1036,8 +1036,8 @@ indica el  motiu:</string>
       <property name="geometry">
        <rect>
         <x>180</x>
-        <y>123</y>
-        <width>110</width>
+        <y>136</y>
+        <width>151</width>
         <height>22</height>
        </rect>
       </property>
@@ -1069,8 +1069,8 @@ indica el  motiu:</string>
       <property name="geometry">
        <rect>
         <x>210</x>
-        <y>153</y>
-        <width>110</width>
+        <y>169</y>
+        <width>121</width>
         <height>22</height>
        </rect>
       </property>
@@ -1082,7 +1082,7 @@ indica el  motiu:</string>
       <property name="geometry">
        <rect>
         <x>530</x>
-        <y>155</y>
+        <y>171</y>
         <width>131</width>
         <height>20</height>
        </rect>
@@ -1092,7 +1092,7 @@ indica el  motiu:</string>
       <property name="geometry">
        <rect>
         <x>350</x>
-        <y>160</y>
+        <y>176</y>
         <width>70</width>
         <height>17</height>
        </rect>
@@ -1105,7 +1105,7 @@ indica el  motiu:</string>
       <property name="geometry">
        <rect>
         <x>370</x>
-        <y>98</y>
+        <y>89</y>
         <width>151</width>
         <height>31</height>
        </rect>
@@ -1124,7 +1124,7 @@ indica el  motiu:</string>
       <property name="geometry">
        <rect>
         <x>530</x>
-        <y>100</y>
+        <y>91</y>
         <width>131</width>
         <height>20</height>
        </rect>
@@ -1141,6 +1141,48 @@ indica el  motiu:</string>
       </property>
       <property name="text">
        <string>Editar</string>
+      </property>
+     </widget>
+     <widget class="QCheckBox" name="checkBoxprojectedate2">
+      <property name="geometry">
+       <rect>
+        <x>350</x>
+        <y>140</y>
+        <width>70</width>
+        <height>17</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string/>
+      </property>
+     </widget>
+     <widget class="QLabel" name="label_43">
+      <property name="geometry">
+       <rect>
+        <x>369</x>
+        <y>133</y>
+        <width>151</width>
+        <height>31</height>
+       </rect>
+      </property>
+      <property name="font">
+       <font>
+        <pointsize>10</pointsize>
+       </font>
+      </property>
+      <property name="text">
+       <string>Si no saps la data inicial, 
+indica el  motiu:</string>
+      </property>
+     </widget>
+     <widget class="QComboBox" name="CBprojecvoid2">
+      <property name="geometry">
+       <rect>
+        <x>530</x>
+        <y>135</y>
+        <width>131</width>
+        <height>20</height>
+       </rect>
       </property>
      </widget>
     </widget>
@@ -1722,16 +1764,6 @@ ICGC esta buit</string>
        </rect>
       </property>
      </widget>
-     <widget class="QLineEdit" name="CBdistnfo">
-      <property name="geometry">
-       <rect>
-        <x>100</x>
-        <y>194</y>
-        <width>241</width>
-        <height>20</height>
-       </rect>
-      </property>
-     </widget>
      <widget class="QCheckBox" name="cBdadespart">
       <property name="geometry">
        <rect>
@@ -1803,6 +1835,16 @@ ICGC esta buit</string>
        <rect>
         <x>110</x>
         <y>260</y>
+        <width>231</width>
+        <height>22</height>
+       </rect>
+      </property>
+     </widget>
+     <widget class="QComboBox" name="CBdistnfo">
+      <property name="geometry">
+       <rect>
+        <x>110</x>
+        <y>189</y>
         <width>231</width>
         <height>22</height>
        </rect>
