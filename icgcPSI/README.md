@@ -2,6 +2,22 @@
 
 ICGC plugin for PSI measurements.
 
+v1.4beta.3.1 (7/02/2018)
+
+TODO:
+-	Archivos que cargan con nombres erroneos…
+-	Dibujar grafica, no carga el csv… pero si existe una layer ya en qgis, si que permite hacer las graficas.
+-	Implementar el ST_Convex_hull para la geometría de todos los puntos.
+- Edicion de los registros de la tabla geoset. 
+- Posibilidad de desplazar a otra posicion la carga de la tabla geoset para incrementar velocidad
+
+Cambios menores:
+-	Cambiado nombre de la primera pestaña a “carregar nova informacio” .
+- Borrado comillas que aparecen en el campo link de la documentacion
+- Añadido beginlife_void en el formulario (tabla geocol)
+- Cambiado metadades de geoset a combobox con las citaciones.
+
+
 v1.4beta.3 (4/02/2018)
 
 Eliminado boton informacio de la observacion. Con el nuevo esquema de solo un geoset, no tiene mucho sentido
