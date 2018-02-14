@@ -2,14 +2,17 @@
 
 ICGC plugin for PSI measurements.
 
-v1.4beta.3.1 (7/02/2018)
-
 TODO:
 -	Archivos que cargan con nombres erroneos…
--	Dibujar grafica, no carga el csv… pero si existe una layer ya en qgis, si que permite hacer las graficas.
 -	Implementar el ST_Convex_hull para la geometría de todos los puntos.
-- Edicion de los registros de la tabla geoset. 
 - Posibilidad de desplazar a otra posicion la carga de la tabla geoset para incrementar velocidad
+
+v1.4beta.4 (14/02/2018)
+
+- Solucionado el problema con la carga del archivo csv para dibujarlo.
+- Añadida opcion para editar los registros del conjunto de datos (geoset registro).
+
+v1.4beta.3.1 (7/02/2018)
 
 Cambios menores:
 -	Cambiado nombre de la primera pestaña a “carregar nova informacio” .
@@ -22,17 +25,8 @@ v1.4beta.3 (4/02/2018)
 
 Eliminado boton informacio de la observacion. Con el nuevo esquema de solo un geoset, no tiene mucho sentido
 
-TODO:
--	Archivos que cargan con nombres erroneos…
--	Dibujar grafica, no carga el csv… pero si existe una layer ya en qgis, si que permite hacer las graficas.
--	Implementar el ST_Convex_hull para la geometría de todos los puntos.
 
 v1.4beta.2 (3/02/2018)
-
-TODO:
--	Archivos que cargan con nombres erroneos…
--	Dibujar grafica, no carga el csv… pero si existe una layer ya en qgis, si que permite hacer las graficas.
--	Implementar el ST_Convex_hull para la geometría de todos los puntos.
 
 Nuevas funcionalidades:
 -	Añadida opcion de editar los registros de la tabla campaña, documentcitation y geologiccollection. Nuevo boton editar que carga la info del elemento seleccionado y puedes alterar el registro en la base de datos.
