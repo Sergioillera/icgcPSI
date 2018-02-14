@@ -201,6 +201,11 @@ class icgcPSI:
         self.dlg.pBloadcsv.clicked.connect(self.cargar_foldercsvdades) #buscar la carpeta de archivos csv
         self.dlg.pBloadprocessat.clicked.connect(self.write_to_processat) #escribir en la tabla processat
         self.dlg.pBcarregardades.clicked.connect(self.carregar_dades) #iniciar carga de datos 
+        self.dlg.editgeoset.clicked.connect(self.show_geoset_data)
+        self.dlg.modgeoset.clicked.connect(self.mod_geoset)
+            #tab2 checkbuttons hide the edit-modify button
+        self.dlg.cBdades.stateChanged.connect(self.hide_geosetedit)
+        self.dlg.cBdadespart.stateChanged.connect(self.hide_geosetedit)
             #tab2 dades campaing combobox
         self.dlg.CBdadescamp.currentIndexChanged.connect(self.show_geoset)
         
@@ -249,6 +254,8 @@ class icgcPSI:
         #tab2------------------------------------------------------------
         self.dlg.pathcsvprocessat.clear()
         self.dlg.lEloadpath.clear() #clear the label text box (load shp path)
+        self.dlg.modgeoset.setVisible(False)
+        self.dlg.modgeoset.setEnabled(False)
         #----------------------------------------------------------------
         
         #tab3------------------------------------------------------------
@@ -272,6 +279,7 @@ class icgcPSI:
 
         #tab2------------------------------------------------------------
         self.show_processats() #show list of precessats
+        self.show_all_geoset() #show list of geosets of all campaings
         #----------------------------------------------------------------
         
         #tab3------------------------------------------------------------
@@ -501,6 +509,7 @@ class icgcPSI:
         
     def show_geoset(self):
         if self.dlg.CBdadescamp.currentText()==None or self.dlg.CBdadescamp.currentText()=='':  
+            self.dlg.CBdadesgeoset.clear()
             pass
         else:
             #si la campaña existe, buscar los geosets asociados a ella
@@ -518,8 +527,20 @@ class icgcPSI:
             geosets=[]
             while query.next():
                 geosets.append(str(query.value(0)))
+            self.dlg.CBdadesgeoset.clear()
             self.dlg.CBdadesgeoset.addItems(geosets) #table II, list of processats
-        
+            
+    def show_all_geoset(self):
+        self.dlg.CBgeosetshow.clear()
+        db = self.conectardb 
+        query = QSqlQuery(db)
+        if query.exec_('SELECT inspireid FROM geophobjectset;')==0:
+            self.Missatge(self.tr(u"Error:{}\n".format(query.lastError().text())))
+        geosets=[]
+        geosets.append('')
+        while query.next():
+            geosets.append(str(query.value(0)))
+        self.dlg.CBgeosetshow.addItems(geosets)
 #-----------------------------------------------------------------------------------    
 
 # ++++++++++++++++++++++++++ SHOW HIDDEN BUTTONS +++++++++++++++++++++++++++++++++++
@@ -553,6 +574,17 @@ class icgcPSI:
             self.dlg.pBloadcamp.setText('Modificar')
             self.dlg.campedit.setVisible(True)
             self.dlg.campedit.setEnabled(True)
+            
+    def hide_geosetedit(self):
+        if self.dlg.cBdades.isChecked() or self.dlg.cBdadespart.isChecked():
+            self.dlg.editgeoset.setVisible(False)
+            self.dlg.modgeoset.setVisible(False)
+            self.dlg.editgeoset.setEnabled(False)
+            self.dlg.modgeoset.setEnabled(False)
+        else:
+            self.dlg.editgeoset.setVisible(True)
+            self.dlg.editgeoset.setEnabled(True)
+    
 
 #----------------------------------------------------------------------------------
         
@@ -1149,7 +1181,6 @@ class icgcPSI:
 
             exist,idgeocol = self.isinbd(query,'geologiccollection','name',#obtain geocol id
                                        self.dlg.CBgeocoldades.currentText(),'geologiccollectionid')
-
             if exist==0:
                 self.Missatge(self.tr(u"Error al buscar el geologiccollection ide"))
                 return 
@@ -1367,7 +1398,8 @@ class icgcPSI:
             self.Missatge(self.tr(u"Error al actualitzar la taula {}\n".format(tabla))+query.lastError().text())
             error=True
         else:
-            #self.Missatge(self.tr(u"Taula {} actualitzada\n".format(tabla))) 
+            #self.Missatge(self.tr(u"Taula {} actualitzada\n".format(tabla)))
+            self.dlg.CBgeosetshow.addItems([self.dlg.lEgeosetinspireid.text()]) #añadir al cbox de geosets existentes
             error=False
         return error,ide
 
@@ -1650,6 +1682,220 @@ class icgcPSI:
                 self.Missatge(self.tr(u'Cancelada la carrega de dades'),'Informacio')
                 error=True
         return error
+
+    def show_geoset_data(self):
+        '''
+        Docstring: funcion que activa el boton modificar para los conjuntos de datos (tabla geoset) y muestra en el
+        formulario todos los datos asociados al geoset seleccionado en el combobox que esta a su izquierda
+        '''
+        if self.dlg.CBgeosetshow.currentText()=='': #no se ha seleccionado un geoset de la lista
+            return 
+        else:
+            self.dlg.modgeoset.setEnabled(True) #activas el boton modificar y lo haces visible
+            self.dlg.modgeoset.setVisible(True)
+            
+            #crear la query y consultar a la tabla geoset
+            db=self.conectardb
+            query = QSqlQuery(db)
+              
+            datos={}
+            name=self.dlg.CBgeosetshow.currentText()
+            campos='inspireid,distributioninfo,distributioninfo_void,largerwork,largerwork_void,geologiccollection'
+            campos=campos+',campaign,citation,process'
+            if query.exec_('SELECT ({}) FROM geophobjectset WHERE geophobjectset.inspireid=\'{}\';'.format(campos,name))==0:
+                self.Missatge(self.tr(u"Error al buscar informacio del geoset\n")+query.lastError().text())
+                return
+            while query.next():
+                datos=query.value(0)
+            if datos=={}:
+                return
+            datos=datos.replace('(','')
+            datos=datos.replace(')','')
+            datos=datos.split(',')
+        
+            #rellenar los campos de la ui
+            self.dlg.lEgeosetinspireid.clear()
+            self.dlg.lEgeosetinspireid.setText(datos[0]) #identificador conjunt
+            
+            #distribution + distribution void   
+            if datos[1]=='': #consultar el distribution void
+                self.dlg.CBdistnfo.setCurrentIndex(0) #lista a 0
+                error,void=self.fromidtovoid(query,datos[2]) #distribution_void
+                if error:
+                    self.Missatge(self.tr(u"Error a la id distribution_void\n"))
+                    return
+                self.dlg.CBdistnfo_void.setCurrentIndex(self.dlg.CBdistnfo_void.findText(void))
+                
+            else:            
+                self.dlg.CBdistnfo_void.setCurrentIndex(0) #lista a 0
+                error,nom=self.isinbd(query,'documentcitation','documentcitationid',datos[1],'name') #distribution id->name           
+                if error <1:
+                    self.Missatge(self.tr(u"Error al buscar citation from id\n")+query.lastError().text())
+                    return
+                self.dlg.CBdistnfo.setCurrentIndex(self.dlg.CBdistnfo.findText(nom))
+
+            
+            #largework + largework void   
+            self.dlg.lEgeosetlargework.clear()
+            if datos[3]=='': #consultar el largework void
+                self.dlg.lEgeosetlargework.setText('') 
+                error,void=self.fromidtovoid(query,datos[4]) #distribution_void
+                if error:
+                    self.Missatge(self.tr(u"Error a la id distribution_void\n"))
+                    return
+                self.dlg.CBlargework_void.setCurrentIndex(self.dlg.CBlargework_void.findText(void))
+                
+            else:            
+                self.dlg.CBdistnfo_void.setCurrentIndex(0) #lista a 0
+                self.dlg.lEgeosetlargework.setText(datos[3])             
+           
+            error,nom=self.isinbd(query,'geologiccollection','geologiccollectionid',datos[5],'name') #geocol id->name
+            if error <1:
+                self.Missatge(self.tr(u"Error al buscar geocol from id\n")+query.lastError().text())
+                return
+            self.dlg.CBgeocoldades.setCurrentIndex(self.dlg.CBgeocoldades.findText(nom))
+            
+            error,nom=self.isinbd(query,'campaign','campaignid',datos[6],'name') #campaña id->name
+            if error <1:
+                self.Missatge(self.tr(u"Error al buscar campanya from id\n")+query.lastError().text())
+                return
+            self.dlg.CBcampdades.setCurrentIndex(self.dlg.CBcampdades.findText(nom))
+            
+            error,nom=self.isinbd(query,'documentcitation','documentcitationid',datos[7],'name') #citation id->name           
+            if error <1:
+                self.Missatge(self.tr(u"Error al buscar citation from id\n")+query.lastError().text())
+                return
+            self.dlg.CBdoccitdades.setCurrentIndex(self.dlg.CBdoccitdades.findText(nom)) 
+            
+            error,nom=self.isinbd(query,'processes','processesid',datos[8],'name') #processes id->name           
+            if error <1:
+                self.Missatge(self.tr(u"Error al buscar processes from id\n")+query.lastError().text())
+                return
+            self.dlg.CBprocessats.setCurrentIndex(self.dlg.CBprocessats.findText(nom)) 
+       
+        
+    def mod_geoset(self):
+        '''
+        Docstring: funcion que altera el registro en la tabla geoset con los nuevos datos del formulario
+        '''
+        #crear la query 
+        db=self.conectardb
+        query = QSqlQuery(db)
+        
+        #registro a modificar id geoset
+        error,idegeoset=self.isinbd(query,'geophobjectset','inspireid',self.dlg.CBgeosetshow.currentText(),'geophobjectsetid')
+        if error<1:
+            self.Missatge(self.tr(u"Error al buscar geosetid from inspireid(list)\n")+query.lastError().text())
+            return
+        
+        #distribution void solo si no existe distribution (metadatos)
+        if self.dlg.CBdistnfo.currentText()=='': 
+            distribuinfo=None
+            void=self.dlg.CBdistnfo_void.currentText() #get from the  distribution combobox void text
+            if void=='':
+                self.Missatge(self.tr(u"El camp informe metadades esta buit. Indica el perque"))
+                return True
+            exist,distribuinfo_void = self.isinbd(query,'cl_voidtypevalue','voidtypevalue',void,'voidtypevalueid')
+            if exist==0:
+                self.Missatge(self.tr(u"Error al buscar el void ide"))
+                return True
+        else:
+            exist,distribuinfo = self.isinbd(query,'documentcitation','name', #obtain citation id de metadates
+                                       self.dlg.CBdistnfo.currentText(),'documentcitationid')
+            if exist==0:
+                self.Missatge(self.tr(u"Error al buscar la id de les metedades (documentcitation)"))
+                return True 
+            distribuinfo_void=None
+            
+        #largework void solo si no existe largework (codigo ICGC)
+        if self.dlg.lEgeosetlargework.text() =='': 
+            largework=None
+            void=self.dlg.CBlargework_void.currentText()
+            if void=='':
+                self.Missatge(self.tr(u"El camp codi projecte esta buit. Indica el perque"))
+                return True
+            exist,largework_void = self.isinbd(query,'cl_voidtypevalue','voidtypevalue',void,'voidtypevalueid')
+            if exist==0:
+                self.Missatge(self.tr(u"Error al buscar el void ide"))
+                return True
+
+        else:
+            largework= self.dlg.lEgeosetlargework.text()
+            largework_void=None
+        
+        
+        #id geocol (projecte)
+        if self.dlg.CBgeocoldades.currentText()=='':
+            self.Missatge(self.tr(u"Error. Selecciona un projecte."))
+            return
+        else:
+            exist,idgeocol = self.isinbd(query,'geologiccollection','name',
+                                       self.dlg.CBgeocoldades.currentText(),'geologiccollectionid')
+            if exist==0:
+                self.Missatge(self.tr(u"Error al buscar el geologiccollection ide"))
+                return
+        
+        #id campaign 
+        if self.dlg.CBcampdades.currentText()=='':
+            self.Missatge(self.tr(u"Error. Selecciona una campanya."))
+            return
+        else:
+            exist,idcampaign = self.isinbd(query,'campaign','name',self.dlg.CBcampdades.currentText(),'campaignid')
+            if exist==0:
+                self.Missatge(self.tr(u"Error al buscar el campaign ide"))
+                return
+        
+        #id citation
+        if self.dlg.CBdoccitdades.currentText()=='':
+            self.Missatge(self.tr(u"Error. Selecciona una documentacio."))
+            return
+        else:
+            exist,idcitation = self.isinbd(query,'documentcitation','name', #obtain citation id
+                                       self.dlg.CBdoccitdades.currentText(),'documentcitationid')
+            if exist==0:
+                self.Missatge(self.tr(u"Error al buscar el documentcitation ide"))
+                return
+
+        #id process
+        if self.dlg.CBprocessats.currentText()=='':
+            self.Missatge(self.tr(u"Error. Selecciona un processat."))
+            return
+        else:
+            exist,idprocess = self.isinbd(query,'processes','name', #obtain processes id 
+                                       self.dlg.CBprocessats.currentText(),'processesid')
+            if exist==0:
+                self.Missatge(self.tr(u"Error al buscar el processes ide"))
+                return
+
+       
+        querytext='UPDATE {} SET inspireid=:1,distributioninfo=:2,distributioninfo_void=:3,largework=:4,'.format('geophobjectset')
+        querytext=querytext+'largework_void=:5,geologiccollection=:6,campaign=:7,citation=:8,process=:9 WHERE geophobjectsetid={};'.format(idegeoset)
+        
+        query.prepare('UPDATE {} SET inspireid=:1,distributioninfo=:2,distributioninfo_void=:3,largerwork=:4,largerwork_void=:5,geologiccollection=:6,campaign=:7,citation=:8,process=:9 WHERE geophobjectset.geophobjectsetid={};'.format('geophobjectset',idegeoset))
+        inspireid=self.dlg.lEgeosetinspireid.text()
+        query.bindValue(':1',inspireid) #inspireid
+        query.bindValue(':2',distribuinfo) #distribution info
+        query.bindValue(':3',distribuinfo_void) #distributioninfo_void
+        query.bindValue(':4',largework) #largework
+        query.bindValue(':5',largework_void) #largework_void
+        query.bindValue(':6',idgeocol) #geocol id (projecte)
+        query.bindValue(':7',idcampaign) #campaign id
+        query.bindValue(':8',idcitation)
+        query.bindValue(':9',idprocess)
+        
+        if query.exec_()==0:
+            self.Missatge(self.tr(u"Error al modificar el registre de la geoset\n")+query.lastError().text())
+            return
+        else: #si ha funcionado
+        
+            self.Missatge(self.tr(u"Taula geoset modifcada\n"),'Informacio')
+            self.dlg.modgeoset.setEnabled(False) #ocultar otra vez el boton modificar
+            self.dlg.modgeoset.setVisible(False)
+            #borrar la entrada en la CBgeosetshow
+            self.dlg.CBgeosetshow.removeItem(self.dlg.CBgeosetshow.findText(self.dlg.CBgeosetshow.currentText()))
+            self.dlg.CBgeosetshow.addItems([self.dlg.lEgeosetinspireid.text()])
+            return
+        
 
 # ----------------------------------------------------------------------------------
 
@@ -2015,7 +2261,7 @@ class icgcPSI:
 
 
 #++++++++++++++++++++++++++++++++++ TABLE IV FUNCTIONS ++++++++++++++++++++++++
-    
+ 
     def cargar_csv(self):
         #choose directory path
         self.dlg.lEshppath.setText('')
@@ -2026,20 +2272,14 @@ class icgcPSI:
             return
         else:
             self.dlg.lEshppath.setText(name)
-            uri=QUrl.fromLocalFile(name)
-            uri.addQueryItem('type','csv')
-            uri.addQueryItem('delimiter',',')
-            uri.addQueryItem('epsg','32365')
-            uri.addQueryItem('xField','UTM_X')
-            uri.addQueryItem('yField','UTM_Y')
-                
-            layer = QgsVectorLayer(str(uri),name, 'delimitedtext')
-            if not layer:
+            uri='file:///'+name+'?type=csv&delimiter=,%5Ct;&xField=UTM_X&yField=UTM_Y&spatialIndex=no&subsetIndex=no&watchFile=no'
+            lyr = QgsVectorLayer(uri,name.split('/')[-1],'delimitedtext')
+            if not lyr:
                 self.Missatge(self.tr(u"Error al carregar les dades\n"))
                 return
-            print layer.isValid()
+            print lyr.isValid()
 
-            QgsMapLayerRegistry.instance().addMapLayer(layer)
+            QgsMapLayerRegistry.instance().addMapLayer(lyr)
             
                 
     def carregarpunts(self):
@@ -2119,24 +2359,3 @@ class icgcPSI:
         plt.grid()
         plt.show()
         
-        
-        
-        
-
-
-'''
-import os.path, glob
-layers=[]
-
-for file in glob.glob('C:\Users\Usuario\Desktop\Solo un LOS\*'): # Change this base path
-  uri = "file:///" + file + "?type=csv&xField=x&yField=y&spatialIndex=no&subsetIndex=no&watchFile=no"
-  vlayer = QgsVectorLayer(uri, os.path.basename(file), "delimitedtext")
-  vlayer.addAttributeAlias(0,'x')
-  vlayer.addAttributeAlias(1,'y')
-  layers.append(vlayer)
-
-QgsMapLayerRegistry.instance().addMapLayers(layers)
-
-
-
-'''
