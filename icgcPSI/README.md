@@ -3,9 +3,21 @@
 ICGC plugin for PSI measurements.
 
 TODO:
--	Archivos que cargan con nombres erroneos…
 -	Implementar el ST_Convex_hull para la geometría de todos los puntos.
-- Posibilidad de desplazar a otra posicion la carga de la tabla geoset para incrementar velocidad
+- Problema con \\ y simbolos raros (editar a mano el nombre cuando se modifique).
+- La base de datos tiene problemas.
+
+v1.5beta (28/02/2018)
+
+Cambios mayores:
+- Proceso de carga de los datos. Se crea una tabla temporal en la base de datos que almacena todos los datos del archivo csv. Desde ahi se reparten a las diferentes tablas. Al final del proceso, esta tabla temporal se borra. Se sigue este procedimiento por temas de velocidad y eficiencia.
+
+Cambios menores:
+- Arreglado un problema de formato con comillas al editar strings compuestos por dos palabras.
+- Documentacion del formulario del "conjunt de dades" pasado a opcional. (Acepta volor null).
+- Voids repetidos (creo que arreglado)
+
+
 
 v1.4beta.4 (14/02/2018)
 
