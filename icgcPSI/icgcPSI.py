@@ -1276,6 +1276,7 @@ class icgcPSI:
             self.dlg.progressBar.setValue(1)
             
             #rellenamos tabla geophobject
+            start_time = time.time() #tiempo
             maxidgeobject=self.obtain_max_id(query,'geophobject','geophobjectid')
             
             orden='INSERT INTO geophobject (inspireid, geologiccollection, projectedgeometry,height) '
@@ -1284,9 +1285,12 @@ class icgcPSI:
             if query.exec_(orden)==0:
                 self.Missatge(self.tr(u"Error al escriure a la taula geophobject\n.")+query.lastError().text())
                 return
-            self.dlg.progressBar.setValue(2)            
+            self.dlg.progressBar.setValue(2)   
+            print 'Cargados datos en la tabla geophobject'       
+            print("--- %s seconds ---" % (time.time() - start_time)) 
             
             #rellenamos la tabla spatialsamplingfeature
+            start_time = time.time() #tiempo
             maxidspatialsampling=self.obtain_max_id(query,'spatialsamplingfeature','spatialsamplingid')
             
             orden='INSERT INTO spatialsamplingfeature (geophobject,geophobjectset) ' 
@@ -1296,8 +1300,11 @@ class icgcPSI:
                 self.Missatge(self.tr(u"Error al escriure a la taula spatialsamplingfeature\n.")+query.lastError().text())
                 return
             self.dlg.progressBar.setValue(3)
+            print 'Cargados datos en la tabla spatialsamplingfeature'       
+            print("--- %s seconds ---" % (time.time() - start_time))            
             
             #rellenar la tabla samplingfeature
+            start_time = time.time() #tiempo
             maxidsamplingfeat=self.obtain_max_id(query,'samplingfeature','samplingfeatureid')            
             
             orden='INSERT INTO samplingfeature (spatialsamplingfeature,validtime_begin,validtime_end)'
@@ -1307,11 +1314,13 @@ class icgcPSI:
                 self.Missatge(self.tr(u"Error al escriure a la taula samplingfeature.\n")+query.lastError().text())
                 return
             self.dlg.progressBar.setValue(4)
+            print 'Cargados datos en la tabla samplingfeature'       
+            print("--- %s seconds ---" % (time.time() - start_time))            
             
             # rellenar la tabla samplingresult
             #colocamos primero todas las velocidades, luego todas las v_std y todas las coher
             #creo una tabla auxiliar con todas las id's de samplingfeature (numero de puntos)
-            
+            start_time = time.time() #tiempo
             #-------------------------------idtemporal---------------------------------------
             orden='DROP TABLE IF EXISTS idtemporal;'
             if query.exec_(orden)==0:
@@ -1334,34 +1343,48 @@ class icgcPSI:
                 self.Missatge(self.tr(u"Error taula idtemporal (insert).\n")+query.lastError().text())
                 return
             self.dlg.progressBar.setValue(5)
+            print 'Creada tabla temporal idtemporal'       
+            print("--- %s seconds ---" % (time.time() - start_time))            
+            
             
             #-------------------------------------------------------------------------------
             tipo=['_VEL','_V_STDEV','_COH']
             #-----------------------velocidades
+            start_time = time.time() #tiempo
             orden='INSERT INTO samplingresult(samplingfeature,value,name) '
             orden+='SELECT id_sampling, vel, \'{}\' FROM idtemporal, temporal WHERE temporal.ids=idtemporal.id;'.format(name+tipo[0])
             if query.exec_(orden)==0:
                 self.Missatge(self.tr(u"Error a la taula samplingresult (velocitats).\n")+query.lastError().text())
                 return
             self.dlg.progressBar.setValue(6)
-            #-----------------------v_std     
+            print 'Cargados datos de velocidad'       
+            print("--- %s seconds ---" % (time.time() - start_time))            
+            
+            #-----------------------v_std   
+            start_time = time.time() #tiempo
             orden='INSERT INTO samplingresult(samplingfeature,value,name) '
             orden+='SELECT id_sampling, vel_std, \'{}\' FROM idtemporal, temporal WHERE temporal.ids=idtemporal.id;'.format(name+tipo[1])
             if query.exec_(orden)==0:
                 self.Missatge(self.tr(u"Error a la taula samplingresult (v_std).\n")+query.lastError().text())
                 return
             self.dlg.progressBar.setValue(7)
+            print 'Cargados datos de v_std'       
+            print("--- %s seconds ---" % (time.time() - start_time))
+            
             #-----------------------coherencia
+            start_time = time.time() #tiempo
             orden='INSERT INTO samplingresult(samplingfeature,value,name) '
             orden+='SELECT id_sampling, COHERENCE, \'{}\' FROM idtemporal, temporal WHERE temporal.ids=idtemporal.id;'.format(name+tipo[2])
             if query.exec_(orden)==0:
                 self.Missatge(self.tr(u"Error a la taula samplingresult (coherencia).\n")+query.lastError().text())
                 return
             self.dlg.progressBar.setValue(8)
+            print 'Cargados datos de coherencia'       
+            print("--- %s seconds ---" % (time.time() - start_time))
             
             #abrimos loop sobre fechas (columnas de datos con fecha)            
             for i,fecha in enumerate(dates):
-                
+                start_time = time.time() #tiempo
                 # rellenar la tabla observation
                 maxidobser=self.obtain_max_id(query,'observation','observationid')
                 
@@ -1370,10 +1393,13 @@ class icgcPSI:
                 if query.exec_(orden)==0:
                     self.Missatge(self.tr(u"Error al escriure a la taula observation.\n")+query.lastError().text())
                     return
+                    print 'Cargados datos en la tabla observation para la columna i=',i       
+                    print("--- %s seconds ---" % (time.time() - start_time))
+                
                 
                 ####rellenar la tabla observationresult
                 #creo una tabla auxiliar con todas las id's de observation (numero de puntos)
-                
+                start_time = time.time() #tiempo
                 #----------------------idobstemporal----------------------
                 orden='DROP TABLE IF EXISTS idobstemporal;'
                 if query.exec_(orden)==0:
@@ -1395,21 +1421,31 @@ class icgcPSI:
                 if query.exec_(orden)==0:
                     self.Missatge(self.tr(u"Error taula idobstemporal (insert).\n")+query.lastError().text())
                     return
+                print 'Creada tabla idobstemporal para la columna i=',i       
+                print("--- %s seconds ---" % (time.time() - start_time))
+                
                 
                 #-------------------------------------------------------------------------------
                 #escribir en observationresult
+                start_time = time.time() #tiempo
                 orden='INSERT INTO observationresult(name,value,observation) '
                 orden+='SELECT \'{}\', {}, id_obs FROM temporal, idobstemporal WHERE temporal.ids=idobstemporal.id;'.format(name,'dato'+str(i))
                 if query.exec_(orden)==0:
                     self.Missatge(self.tr(u"Error al escriure a la taula observationresult.\n")+query.lastError().text())
                     return
+                print 'Cargados datos en la tabla observationresult para la columna i=',i       
+                print("--- %s seconds ---" % (time.time() - start_time))   
+                    
             
                 #borramos la tabla temporal idobstemporal
+                start_time = time.time() #tiempo
                 orden='DROP TABLE IF EXISTS idobstemporal;'
                 if query.exec_(orden)==0:
                     self.Missatge(self.tr(u"Error taula idobstemporal (end drop).\n")+query.lastError().text())
                     return
-                self.dlg.progressBar.setValue(9+i)   
+                self.dlg.progressBar.setValue(9+i)
+                print 'Borrada tabla idobstemporal para la columna i=',i       
+                print("--- %s seconds ---" % (time.time() - start_time))
             #end fecha loop--------
             
             #borramos la tabla temporal idtemporal
@@ -1448,7 +1484,7 @@ class icgcPSI:
         if query.exec_(orden)==0:
             print query.lastError().text()
             
-        start_time = time.time() #timpo
+        start_time = time.time() #tiempo
         arch=open(archivo,'r')
         reader=csv.reader(arch,delimiter=';')
         next(reader) #saltamos el header del file
