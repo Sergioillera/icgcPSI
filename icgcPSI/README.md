@@ -7,6 +7,10 @@ TODO:
 - Problema con \\ y simbolos raros (editar a mano el nombre cuando se modifique).
 - La base de datos tiene problemas.
 
+v1.5beta.1 (1/03/2018)
+Cambios menores
+- Añadidos print y cronometros para ver donde gasta mas tiempo.
+
 v1.5beta (28/02/2018)
 
 Cambios mayores:
