@@ -1272,131 +1272,81 @@ class icgcPSI:
             self.dlg.lEstatexport.setText('LLegint arxiu {}/{} : {}'.format(num+1,len(list_files),files))
             
             #cargamos datos en tabla temporal
-            self.importcsvtodb(query,path_dir+'\\'+files,numdates) 
+            if self.importcsvtodb(query,path_dir+'\\'+files,numdates) ==1: #si devuelve error, adios
+                return
             self.dlg.progressBar.setValue(1)
             
             #rellenamos tabla geophobject
-            start_time = time.time() #tiempo
-            maxidgeobject=self.obtain_max_id(query,'geophobject','geophobjectid')
-            
-            orden='INSERT INTO geophobject (inspireid, geologiccollection, projectedgeometry,height) '
-            orden+='SELECT \'es.icgc.ge.psi_\' || utmx || \'_\' || utmy, {},ST_SetSRID(ST_MakePoint(utmx, utmy), 25831), '.format(idgeocol)
-            orden+='height FROM temporal;'
-            if query.exec_(orden)==0:
-                self.Missatge(self.tr(u"Error al escriure a la taula geophobject\n.")+query.lastError().text())
+            if self.writetogeophobject(query,idgeocol)==1: #si devuelve error, adios
                 return
-            self.dlg.progressBar.setValue(2)   
-            print 'Cargados datos en la tabla geophobject'       
-            print("--- %s seconds ---" % (time.time() - start_time)) 
+            self.dlg.progressBar.setValue(2) 
             
-            #rellenamos la tabla spatialsamplingfeature
-            start_time = time.time() #tiempo
-            maxidspatialsampling=self.obtain_max_id(query,'spatialsamplingfeature','spatialsamplingid')
-            
-            orden='INSERT INTO spatialsamplingfeature (geophobject,geophobjectset) ' 
-            orden+='SELECT geophobjectid,{} FROM geophobject '.format(idgeoset)
-            orden+='WHERE geophobjectid>{};'.format(maxidgeobject) #no hay limite superior
-            if query.exec_(orden)==0:
-                self.Missatge(self.tr(u"Error al escriure a la taula spatialsamplingfeature\n.")+query.lastError().text())
+            #rellenamos tabla spatialsampling
+            if self.writespatialsampling(query,idgeoset)==1: #si devuelve error, adios
                 return
-            self.dlg.progressBar.setValue(3)
-            print 'Cargados datos en la tabla spatialsamplingfeature'       
-            print("--- %s seconds ---" % (time.time() - start_time))            
+            self.dlg.progressBar.setValue(3)    
             
-            #rellenar la tabla samplingfeature
-            start_time = time.time() #tiempo
-            maxidsamplingfeat=self.obtain_max_id(query,'samplingfeature','samplingfeatureid')            
+            #rellenamos tabla samplingfeature
+            if self.writesamplingfeature(query,maxdates)==1: #si devuelve error, adios
+                return
+            self.dlg.progressBar.setValue(4) 
             
-            orden='INSERT INTO samplingfeature (spatialsamplingfeature,validtime_begin,validtime_end)'
-            orden+='SELECT spatialsamplingid, to_date(\'{}\',\'YYYYMMDD\'),to_date(\'{}\',\'YYYYMMDD\')'.format(maxdates[0],maxdates[1])
-            orden+=' FROM spatialsamplingfeature WHERE spatialsamplingid>{};'.format(maxidspatialsampling)
-            if query.exec_(orden)==0:
-                self.Missatge(self.tr(u"Error al escriure a la taula samplingfeature.\n")+query.lastError().text())
-                return
-            self.dlg.progressBar.setValue(4)
-            print 'Cargados datos en la tabla samplingfeature'       
-            print("--- %s seconds ---" % (time.time() - start_time))            
-            
-            # rellenar la tabla samplingresult
-            #colocamos primero todas las velocidades, luego todas las v_std y todas las coher
-            #creo una tabla auxiliar con todas las id's de samplingfeature (numero de puntos)
-            start_time = time.time() #tiempo
-            #-------------------------------idtemporal---------------------------------------
-            orden='DROP TABLE IF EXISTS idtemporal;'
-            if query.exec_(orden)==0:
-                self.Missatge(self.tr(u"Error taula idtemporal (drop)\n.")+query.lastError().text())
-                return
-    
-            orden='CREATE TABLE idtemporal (id SERIAL PRIMARY KEY,id_sampling int);'
-            if query.exec_(orden)==0:
-                self.Missatge(self.tr(u"Error taula idtemporal (create).\n")+query.lastError().text())
-                return
 
-            orden='TRUNCATE idtemporal RESTART IDENTITY;'
-            if query.exec_(orden)==0:
-                self.Missatge(self.tr(u"Error taula idtemporal (truncate).\n")+query.lastError().text())
-                return
-
-            orden='INSERT INTO idtemporal(id_sampling) SELECT samplingfeatureid FROM samplingfeature '
-            orden+=' WHERE samplingfeatureid>{};'.format(maxidsamplingfeat)
-            if query.exec_(orden)==0:
-                self.Missatge(self.tr(u"Error taula idtemporal (insert).\n")+query.lastError().text())
-                return
-            self.dlg.progressBar.setValue(5)
-            print 'Creada tabla temporal idtemporal'       
-            print("--- %s seconds ---" % (time.time() - start_time))            
-            
-            
+            #rellenar la tabla samplingresult: todo lo que necesitamos ya existe en la tabla temporal (las ids y los valores)
             #-------------------------------------------------------------------------------
             tipo=['_VEL','_V_STDEV','_COH']
             #-----------------------velocidades
             start_time = time.time() #tiempo
             orden='INSERT INTO samplingresult(samplingfeature,value,name) '
-            orden+='SELECT id_sampling, vel, \'{}\' FROM idtemporal, temporal WHERE temporal.ids=idtemporal.id;'.format(name+tipo[0])
+            orden+='SELECT idsampfeat, vel, \'{}\' FROM temporal;'.format(name+tipo[0])
             if query.exec_(orden)==0:
                 self.Missatge(self.tr(u"Error a la taula samplingresult (velocitats).\n")+query.lastError().text())
                 return
             self.dlg.progressBar.setValue(6)
-            print 'Cargados datos de velocidad'       
-            print("--- %s seconds ---" % (time.time() - start_time))            
+            if os.isatty(1):
+                print 'Cargados datos de velocidad'       
+                print '--- {} seconds ---'.format(time.time() - start_time)            
             
             #-----------------------v_std   
             start_time = time.time() #tiempo
             orden='INSERT INTO samplingresult(samplingfeature,value,name) '
-            orden+='SELECT id_sampling, vel_std, \'{}\' FROM idtemporal, temporal WHERE temporal.ids=idtemporal.id;'.format(name+tipo[1])
+            orden+='SELECT idsampfeat, vel_std, \'{}\' FROM temporal;'.format(name+tipo[1])
             if query.exec_(orden)==0:
                 self.Missatge(self.tr(u"Error a la taula samplingresult (v_std).\n")+query.lastError().text())
                 return
             self.dlg.progressBar.setValue(7)
-            print 'Cargados datos de v_std'       
-            print("--- %s seconds ---" % (time.time() - start_time))
+            if os.isatty(1):
+                print 'Cargados datos de v_std'       
+                print '--- {} seconds ---'.format(time.time() - start_time)
             
             #-----------------------coherencia
             start_time = time.time() #tiempo
             orden='INSERT INTO samplingresult(samplingfeature,value,name) '
-            orden+='SELECT id_sampling, COHERENCE, \'{}\' FROM idtemporal, temporal WHERE temporal.ids=idtemporal.id;'.format(name+tipo[2])
+            orden+='SELECT idsampfeat, COHERENCE, \'{}\' FROM temporal;'.format(name+tipo[2])
             if query.exec_(orden)==0:
                 self.Missatge(self.tr(u"Error a la taula samplingresult (coherencia).\n")+query.lastError().text())
                 return
             self.dlg.progressBar.setValue(8)
-            print 'Cargados datos de coherencia'       
-            print("--- %s seconds ---" % (time.time() - start_time))
+            if os.isatty(1):
+                print 'Cargados datos de coherencia'       
+                print '--- {} seconds ---'.format(time.time() - start_time)
             
             #abrimos loop sobre fechas (columnas de datos con fecha)            
             for i,fecha in enumerate(dates):
                 start_time = time.time() #tiempo
-                # rellenar la tabla observation
+
                 maxidobser=self.obtain_max_id(query,'observation','observationid')
                 
+                # rellenar la tabla observation: se ponen en serie, sin mirar duplicados ni nada mas....             
                 orden='INSERT INTO observation(phenomenontime,samplingfeature) '
-                orden+='SELECT to_date(\'{}\',\'YYYYMMDD\'), id_sampling FROM idtemporal;'.format(fecha)
+                orden+='SELECT to_date(\'{}\',\'YYYYMMDD\'), idsampfeat FROM temporal;'.format(fecha)
                 if query.exec_(orden)==0:
                     self.Missatge(self.tr(u"Error al escriure a la taula observation.\n")+query.lastError().text())
                     return
-                    print 'Cargados datos en la tabla observation para la columna i=',i       
-                    print("--- %s seconds ---" % (time.time() - start_time))
-                
-                
+                if os.isatty(1):
+                    print 'Cargados datos en la tabla observation para la columna i={}'.format(i)      
+                    print '--- {} seconds ---'.format( time.time() - start_time)
+    
                 ####rellenar la tabla observationresult
                 #creo una tabla auxiliar con todas las id's de observation (numero de puntos)
                 start_time = time.time() #tiempo
@@ -1421,9 +1371,9 @@ class icgcPSI:
                 if query.exec_(orden)==0:
                     self.Missatge(self.tr(u"Error taula idobstemporal (insert).\n")+query.lastError().text())
                     return
-                print 'Creada tabla idobstemporal para la columna i=',i       
-                print("--- %s seconds ---" % (time.time() - start_time))
-                
+                if os.isatty(1):
+                    print 'Creada tabla idobstemporal para la columna i={}'.format(i)       
+                    print '--- {} seconds ---'.format(time.time() - start_time)
                 
                 #-------------------------------------------------------------------------------
                 #escribir en observationresult
@@ -1433,10 +1383,10 @@ class icgcPSI:
                 if query.exec_(orden)==0:
                     self.Missatge(self.tr(u"Error al escriure a la taula observationresult.\n")+query.lastError().text())
                     return
-                print 'Cargados datos en la tabla observationresult para la columna i=',i       
-                print("--- %s seconds ---" % (time.time() - start_time))   
+                if os.isatty(1):
+                    print 'Cargados datos en la tabla observationresult para la columna i={}'.format(i)       
+                    print '--- {} seconds ---'.format(time.time() - start_time)  
                     
-            
                 #borramos la tabla temporal idobstemporal
                 start_time = time.time() #tiempo
                 orden='DROP TABLE IF EXISTS idobstemporal;'
@@ -1444,16 +1394,13 @@ class icgcPSI:
                     self.Missatge(self.tr(u"Error taula idobstemporal (end drop).\n")+query.lastError().text())
                     return
                 self.dlg.progressBar.setValue(9+i)
-                print 'Borrada tabla idobstemporal para la columna i=',i       
-                print("--- %s seconds ---" % (time.time() - start_time))
+                
+                if os.isatty(1):
+                    print 'Borrada tabla idobstemporal para la columna i={}'.format(i)       
+                    print '--- {} seconds ---'.format(time.time() - start_time)
+
             #end fecha loop--------
             
-            #borramos la tabla temporal idtemporal
-            orden='DROP TABLE IF EXISTS idtemporal;'
-            if query.exec_(orden)==0:
-               self.Missatge(self.tr(u"Error taula idtemporal (end drop).\n")+query.lastError().text())
-               return            
-            self.dlg.progressBar.setValue(10+numdates)
             #borramos la tabla temporal donde estan los datos importados del csv
             orden='DROP TABLE IF EXISTS temporal;'
             if query.exec_(orden)==0:
@@ -1464,12 +1411,234 @@ class icgcPSI:
         self.Missatge(self.tr(u'Carrega de dades finalitzada'),'Informacio')
         
 
-    def importcsvtodb(self,query,archivo,numdates):
+    def writesamplingfeature(self,query,maxdates):
+        '''
+        Docstring: Funcion que escribe en la tabla samplingfeature
+        1 - Buscas los puntos que has de añadir (que no existes en samplingfeature),guardas su temporal.id
+        2 - Añades estos puntos a la tabla samplingfeature
+        3 - Buscas el samplingfeatureid de los puntos de la tabla temporal        
+        '''
+        start_time = time.time() #tiempo
+        #añadimos nueva columna a la tabla de datos temporal, esta columna almacenara los idsamplingfeature
+        orden='ALTER TABLE temporal ADD COLUMN idsampfeat int;' #añadimos id a la tabla de datos
+        if query.exec_(orden)==0:
+            self.Missatge(self.tr(u"Error taula temporal (alter idsampfeat).\n")+query.lastError().text())
+            return True        
         
+        #1 Buscamos la temporal.ids de los puntos no existentes en la tabla spatialsamplingfeature
+        orden1='SELECT temporal.ids FROM temporal WHERE temporal.idsspatialsamp NOT IN ' #los elementos que no estan
+        orden1+='(SELECT idsspatialsamp FROM temporal INTERSECT ' #en las dos tablas
+        orden1+='(SELECT spatialsamplingfeature FROM samplingfeature '
+        orden1+='WHERE validtime_begin=to_date(\'{}\',\'YYYYMMDD\') AND validtime_end=to_date(\'{}\',\'YYYYMMDD\')))'.format(maxdates[0],maxdates[1]) 
+        
+        #2 insertamos los nuevos puntos en la tabla spatialsamplingfeature
+        orden='INSERT INTO samplingfeature (spatialsamplingfeature,validtime_begin,validtime_end) '
+        orden+='SELECT idsspatialsamp,to_date(\'{}\',\'YYYYMMDD\'),to_date(\'{}\',\'YYYYMMDD\') '.format(maxdates[0],maxdates[1])
+        orden+='FROM temporal WHERE temporal.ids in ({}) ;'.format(orden1)
+        if query.exec_(orden)==0:
+            self.Missatge(self.tr(u"Error al escriure a la taula samplingfeature els nous punts.\n")+query.lastError().text())
+            return True                
+        
+        #3 buscamos la samplingfeatureid de los puntos de la tabla temporal y lo insertamos en la columna temporal.idsampfeat
+        #----------------------idssamptemporal----------------------
+        orden='DROP TABLE IF EXISTS idssamptemporal;'
+        if query.exec_(orden)==0:
+            self.Missatge(self.tr(u"Error taula idssamptemporal (drop).\n")+query.lastError().text())
+            return True
+    
+        orden='CREATE TABLE idssamptemporal (id SERIAL PRIMARY KEY,id_sptfeat int);'
+        if query.exec_(orden)==0:
+            self.Missatge(self.tr(u"Error taula idssamptemporal (create).\n")+query.lastError().text())
+            return True
+
+        orden='TRUNCATE idssamptemporal RESTART IDENTITY;'
+        if query.exec_(orden)==0:
+            self.Missatge(self.tr(u"Error taula idssamptemporal (truncate).\n")+query.lastError().text())
+            return True
+
+        orden+='INSERT INTO idssamptemporal (id_sptfeat) '
+        orden+='(SELECT samplingfeatureid FROM samplingfeature WHERE spatialsamplingfeature IN ' #extraer la id
+        orden+='(SELECT temporal.idsspatialsamp FROM temporal INTERSECT '#buscar interseccion por spatialsampligfeature
+        orden+='(SELECT spatialsamplingfeature FROM samplingfeature WHERE ' #filtrar los valores por fecha
+        orden+='validtime_begin=to_date(\'{}\',\'YYYYMMDD\') AND validtime_end=to_date(\'{}\',\'YYYYMMDD\'))));'.format(maxdates[0],maxdates[1])
+        if query.exec_(orden)==0:
+            self.Missatge(self.tr(u"Error al escriure a la taula idspatialsamptemporal el spatialsamplingid.\n")+query.lastError().text())
+            return True
+
+        #ya tenemos la tabla idssamptemporal llena, ahora pasamos los datos a la tabla temporal igualando las primary keys 
+        orden='UPDATE temporal SET idsampfeat=id_sptfeat FROM idssamptemporal WHERE temporal.ids=idssamptemporal.id;'
+        if query.exec_(orden)==0:
+            self.Missatge(self.tr(u"Error al escriure a la taula temporal el samplingfeatureid.\n")+query.lastError().text())
+            return True
+
+        #borramos la tabla idssamptemporal
+        orden='DROP TABLE IF EXISTS idssamptemporal;'
+        if query.exec_(orden)==0:
+            self.Missatge(self.tr(u"Error taula idssamptemporal (end drop).\n")+query.lastError().text())
+            return True 
+
+        if os.isatty(1):
+            print 'Obtenidos samplingfeatureid de los puntos'       
+            print '--- {} seconds ---'.format(time.time() - start_time)        
+        
+        return False #el error final
+
+    
+    def writespatialsampling(self,query,idgeoset):
+        '''
+        Docstring: Funcion que escribe en la tabla spatialsamplingfeature.
+        1 - Buscas los puntos que has de añadir (que no existes en spatialsamplingfeature),guardas su temporal.id
+        2 - Añades estos puntos a la tabla spatialsamplingfeature
+        3 - Buscas el spatialsamplingid de los puntos de la tabla temporal
+        '''
+        start_time = time.time() #tiempo
+        #añadimos nueva columna a la tabla de datos temporal, esta columna almacenara los idspatialsampling
+        orden='ALTER TABLE temporal ADD column idsspatialsamp int;' #añadimos id a la tabla de datos
+        if query.exec_(orden)==0:
+            self.Missatge(self.tr(u"Error taula temporal (alter idsspatialsamp).\n")+query.lastError().text())
+            return True        
+        
+        #1 Buscamos la temporal.ids de los puntos no existentes en la tabla spatialsamplingfeature
+        orden1='SELECT temporal.ids FROM temporal WHERE temporal.idsgeophobject NOT IN ' #los elementos que no estan
+        orden1+='(SELECT idsgeophobject FROM temporal INTERSECT ' #en las dos tablas
+        orden1+='(SELECT geophobject FROM spatialsamplingfeature WHERE geophobjectset={}))'.format(idgeoset) 
+        
+        #2 insertamos los nuevos puntos en la tabla spatialsamplingfeature
+        orden='INSERT INTO spatialsamplingfeature (geophobject,geophobjectset) '
+        orden+='SELECT idsgeophobject,{} FROM temporal WHERE temporal.ids in ({}) ;'.format(idgeoset,orden1)
+        if query.exec_(orden)==0:
+            self.Missatge(self.tr(u"Error al escriure a la taula spatialsamplingfeat els nous punts.\n")+query.lastError().text())
+            return True        
+        
+        #3 buscamos la spatialsamplingid de los puntos de la tabla temporal y lo insertamos en la columna temporal.idsspatialsamp
+        #----------------------idspatialsamptemporal----------------------
+        orden='DROP TABLE IF EXISTS idspatialsamptemporal;'
+        if query.exec_(orden)==0:
+            self.Missatge(self.tr(u"Error taula idspatialsamptemporal (drop).\n")+query.lastError().text())
+            return True
+    
+        orden='CREATE TABLE idspatialsamptemporal (id SERIAL PRIMARY KEY,id_sptfeat int);'
+        if query.exec_(orden)==0:
+            self.Missatge(self.tr(u"Error taula idspatialsamptemporal (create).\n")+query.lastError().text())
+            return True
+
+        orden='TRUNCATE idspatialsamptemporal RESTART IDENTITY;'
+        if query.exec_(orden)==0:
+            self.Missatge(self.tr(u"Error taula idspatialsamptemporal (truncate).\n")+query.lastError().text())
+            return True
+
+        orden='INSERT INTO idspatialsamptemporal (id_sptfeat) '
+        orden+='(SELECT spatialsamplingid FROM spatialsamplingfeature WHERE geophobject in '
+        orden+='(SELECT idsgeophobject FROM temporal INTERSECT SELECT geophobject FROM spatialsamplingfeature WHERE geophobjectset={}));'.format(idgeoset)
+        if query.exec_(orden)==0:
+            self.Missatge(self.tr(u"Error al escriure a la taula idspatialsamptemporal el spatialsamplingid.\n")+query.lastError().text())
+            return True
+
+        #ya tenemos la tabla idspatialsamptemporal llena, ahora pasamos los datos a la tabla temporal igualando las primary keys 
+        orden='UPDATE temporal SET idsspatialsamp=id_sptfeat FROM idspatialsamptemporal WHERE temporal.ids=idspatialsamptemporal.id;'
+        if query.exec_(orden)==0:
+            self.Missatge(self.tr(u"Error al escriure a la taula temporal el geophobjectid.\n")+query.lastError().text())
+            return True
+
+        #borramos la tabla idspatialsamptemporal
+        orden='DROP TABLE IF EXISTS idspatialsamptemporal;'
+        if query.exec_(orden)==0:
+            self.Missatge(self.tr(u"Error taula idspatialsamptemporal (end drop).\n")+query.lastError().text())
+            return True 
+
+        if os.isatty(1):
+            print 'Obtenidos spatialsamplingfeatureid de los puntos'       
+            print '--- {} seconds ---'.format(time.time() - start_time)        
+        
+        return False #el error final
+    
+
+    def writetogeophobject(self,query,idgeocol):
+        '''
+        Doctsring: Funcion que escribe en la tabla geophobject.
+        1- Buscas los nuevos puntos que has de añadir (que no existen en geophobject), guardas su temporal.id
+        2- Añades estos puntos a la tabla geophobject
+        3- Buscas el geophobject.id de los puntos que tienes en la tabla temporal
+        '''
+        error=False
+        start_time = time.time() #tiempo
+        #añadimos nueva columna a la tabla de datos temporal, esta columna almacenara los idgeophobject
+        orden='ALTER TABLE temporal ADD column idsgeophobject int;' #añadimos id a la tabla de datos
+        if query.exec_(orden)==0:
+            self.Missatge(self.tr(u"Error taula temporal (alter geophobjectid).\n")+query.lastError().text())
+            error=True
+            return error
+            
+        #1 Buscamos la temporal.ids de los puntos no existentes en la tabla geophobject
+        orden1='SELECT temporal.ids FROM temporal WHERE temporal.ids not in ' #las temporal.ids que no esten en 
+        orden1+='(SELECT temporal.ids from temporal where \'es.icgc.ge.psi_\' || utmx || \'_\' || utmy in ' #en los elementos comunes en ambas tablas
+        orden1+='(SELECT \'es.icgc.ge.psi_\' || utmx || \'_\' || utmy from temporal INTERSECT SELECT inspireid FROM geophobject))'
+        
+        #2 insertamos los nuevos puntos en la tabla geophobject        
+        orden='INSERT INTO geophobject (inspireid, geologiccollection, projectedgeometry,height) '
+        orden+='SELECT \'es.icgc.ge.psi_\' || utmx || \'_\' || utmy, {},ST_SetSRID(ST_MakePoint(utmx, utmy), 25831), '.format(idgeocol)
+        orden+='height FROM temporal WHERE temporal.ids in ({});'.format(orden1)
+        if query.exec_(orden)==0:
+            self.Missatge(self.tr(u"Error al escriure a la taula geophobject els nous punts.\n")+query.lastError().text())
+            error=True
+            return error
+        
+        #3 buscamos la geophobjectid de los puntos de la tabla temporal y lo insertamos en la columna temporal.idsgeophobject
+        #necesitamos una tabla temporal para poder hacer esto
+        #----------------------idgeotemporal----------------------
+        orden='DROP TABLE IF EXISTS idgeotemporal;'
+        if query.exec_(orden)==0:
+            self.Missatge(self.tr(u"Error taula idgeotemporal (drop).\n")+query.lastError().text())
+            error=True
+            return error
+    
+        orden='CREATE TABLE idgeotemporal (id SERIAL PRIMARY KEY,id_geo int);'
+        if query.exec_(orden)==0:
+            self.Missatge(self.tr(u"Error taula idgeotemporal (create).\n")+query.lastError().text())
+            error=True
+            return error
+
+        orden='TRUNCATE idgeotemporal RESTART IDENTITY;'
+        if query.exec_(orden)==0:
+            self.Missatge(self.tr(u"Error taula idgeotemporal (truncate).\n")+query.lastError().text())
+            error=True
+            return error
+
+        orden='INSERT INTO idgeotemporal (id_geo) '
+        orden+='(SELECT geophobjectid FROM geophobject WHERE inspireid in '
+        orden+='(SELECT \'es.icgc.ge.psi_\' || utmx || \'_\' || utmy from temporal INTERSECT SELECT inspireid FROM geophobject));'
+        if query.exec_(orden)==0:
+            self.Missatge(self.tr(u"Error al escriure a la taula idgeotemporal el geophobjectid.\n")+query.lastError().text())
+            error=True
+            return error
+
+        #ya tenemos la tabla idgeotemporal llena, ahora pasamos los datos a la tabla temporal igualando las primary keys 
+        orden='UPDATE temporal SET idsgeophobject=id_geo FROM idgeotemporal WHERE temporal.ids=idgeotemporal.id;'
+        if query.exec_(orden)==0:
+            self.Missatge(self.tr(u"Error al escriure a la taula temporal el geophobjectid.\n")+query.lastError().text())
+            error=True
+            return error
+
+        #borramos la tabla idgeotemporal
+        orden='DROP TABLE IF EXISTS idgeotemporal;'
+        if query.exec_(orden)==0:
+            self.Missatge(self.tr(u"Error taula idgeotemporal (end drop).\n")+query.lastError().text())
+            error=True
+            return error 
+
+        if os.isatty(1):
+            print 'Obtenidos geophobjectid de los puntos'       
+            print '--- {} seconds ---'.format(time.time() - start_time)        
+        return error
+        
+        
+
+    def importcsvtodb(self,query,archivo,numdates):
         orden='DROP TABLE IF EXISTS temporal;' #borramos la tabla si existe
         if query.exec_(orden)==0:
-            print query.lastError().text()
-    
+            self.Missatge(self.tr(u"Error taula temporal (drop).\n")+query.lastError().text())
+            return True #devuelve error
+            
         datos=''
         for i in range(numdates):
             datos=datos+',dato{} double precision'.format(i)
@@ -1478,11 +1647,14 @@ class icgcPSI:
         orden+='h_stv double precision,vel double precision,vel_std double precision'
         orden+=',COHERENCE double precision,EFF_AREA double precision' + datos+');'        
         if query.exec_(orden)==0:  #creamos la tabla
-            print query.lastError().text()
+            self.Missatge(self.tr(u"Error taula temporal (create).\n")+query.lastError().text())
+            return True #devuelve error            
+
         
         orden='TRUNCATE temporal RESTART IDENTITY;' #reiniciamos para que las ids sean correctas
         if query.exec_(orden)==0:
-            print query.lastError().text()
+            self.Missatge(self.tr(u"Error taula temporal (truncate).\n")+query.lastError().text())
+            return True #devuelve error            
             
         start_time = time.time() #tiempo
         arch=open(archivo,'r')
@@ -1501,7 +1673,8 @@ class icgcPSI:
                 valor=valor[:-1]
                 orden='INSERT INTO temporal VALUES {};'.format(valor)
                 if query.exec_(orden)==0:
-                    print query.lastError().text()
+                    self.Missatge(self.tr(u"Error taula temporal (insert values).\n")+query.lastError().text())
+                    return True #devuelve error                    
                     break
                 i=0
                 valor=''
@@ -1510,23 +1683,21 @@ class icgcPSI:
             valor=valor[:-1]
             orden='INSERT INTO temporal VALUES {};'.format(valor)
             if query.exec_(orden)==0:
-                print query.lastError().text()
+                self.Missatge(self.tr(u"Error taula temporal (insert values).\n")+query.lastError().text())
+                return True #devuelve error                
             
-        print 'Created temporal table in the database'       
-        print("--- %s seconds ---" % (time.time() - start_time))        
+        if os.isatty(1):
+            print 'Created temporal table in the database'       
+            print '--- {} seconds ---'.format(time.time() - start_time)        
         arch.close()
         
         orden='ALTER TABLE temporal ADD column ids SERIAL PRIMARY KEY;' #añadimos id a la tabla de datos
         if query.exec_(orden)==0:
             self.Missatge(self.tr(u"Error taula temporal (alter).\n")+query.lastError().text())
-             
-        '''
-        #importamos los datos del csv a la tabla
-        os.environ["PGPASSWORD"]=str(params[5])
-        orden='psql -h {} -d {}  -U {} -p  {} '.format(params[1],params[2],params[4],params[3])   
-        orden+='-c \"\COPY temporal FROM \'{}\' DELIMITER \';\' CSV HEADER;\"'.format(archivo)
-        os.system(orden)
-        '''
+            return True #devuelve error 
+            
+        return False #el error final
+        
 
     def prelectura(self,archivo,header):
 
@@ -1754,8 +1925,7 @@ class icgcPSI:
             
             if m.exec_()==  QMessageBox.Ok:
                 for nombre in todeleteobs:
-                    minid,maxid=self.obtain_spatialsamplingrange(query,nombre)
-                    self.delete_observation(query,minid,maxid)
+                    self.delete_observation(query,nombre)
                 self.Missatge(self.tr(u'Entrades existents en la base de dades borrades'),'Informacio')
                 error=False
             else:
@@ -1988,6 +2158,9 @@ class icgcPSI:
         Docstring: funcion que crea un mensaje donde muestra toda la info de la
         campaña seleccionada en el combobox
         '''
+        
+        start_time=time.time()
+        
         db=self.conectardb
         query = QSqlQuery(db)
         registro=self.dlg.campainglist.currentText()
@@ -2023,40 +2196,45 @@ class icgcPSI:
             return
         
         if query.exec_('SELECT public.geophobjectset.geophobjectsetid FROM public.geophobjectset'
-        +' JOIN public.campaign ON public.geophobjectset.campaign=public.campaign.campaignid'
-        +' WHERE public.campaign.campaignid={};'.format(idcampaign))==0:
-            self.Missatge(self.tr(u"Error a la consulta de la campanya y geophobjectset.\n")+query.lastError().text())
+        +' WHERE public.geophobjectset.campaign={};'.format(idcampaign))==0:
+            self.Missatge(self.tr(u"Error al consultar la campanya a a taula geophobjectset.\n")+query.lastError().text())
             return
         idgeopset=[]
         while query.next():
             idgeopset.append(query.value(0))
 
-        #from the idgeophobjectset (one per file) is posible to obtain the measure type
+        #from the idgeophobjectset is posible to obtain the measure type
         self.dlg.listWidget.clear()
         self.show_observationname(query,idgeopset)
+        
+        if os.isatty(1):
+            print 'Informacion de la campaña seleccionada'    
+            print '--- {} seconds ---'.format(time.time() - start_time)
 
 
     def show_observationname(self,query,ide):
         '''
         Docstring: llena el list widget con los diferentes tipos de observacion que hay en la tabla observationresult
         '''
-        for i in ide:
-            if query.exec_('SELECT DISTINCT ON (name) name FROM public.observationresult JOIN'
-        +' public.observation ON public.observationresult.observation=public.observation.observationid'
-        +' LEFT JOIN public.samplingfeature ON public.observation.samplingfeature=public.samplingfeature.samplingfeatureid'
-        +' LEFT JOIN public.spatialsamplingfeature ON public.samplingfeature.spatialsamplingfeature=public.spatialsamplingfeature.spatialsamplingid '
-        +' LEFT JOIN public.geophobjectset ON public.spatialsamplingfeature.geophobjectset=public.geophobjectset.geophobjectsetid'
-        +' WHERE public.geophobjectset.geophobjectsetid={};'.format(i))==0:
-                self.Missatge(self.tr(u"Error al consultar observation des de geophobjectset.\n")+query.lastError().text())
-                return
-            while query.next():
-                self.dlg.listWidget.addItems([query.value(0)])
+        start_time=time.time()
+        if query.exec_('SELECT DISTINCT ON (name) name FROM observationresult WHERE observation IN '
+            +'(SELECT observationid FROM observation WHERE samplingfeature IN '
+            +'(SELECT samplingfeatureid FROM samplingfeature WHERE spatialsamplingfeature IN ' 
+            +'(SELECT spatialsamplingid FROM spatialsamplingfeature WHERE geophobjectset={})));'.format(ide[0]))==0:  
+            self.Missatge(self.tr(u"Error al consultar observation des de geophobjectset.\n")+query.lastError().text())
+            return
+        while query.next():
+            self.dlg.listWidget.addItems([query.value(0)])
+            
+        if os.isatty(1):
+            print 'Mostrar los tipos de observaciones existentes'    
+            print '--- %s seconds ---'.format(time.time() - start_time)
 
   
     def delete_observationname(self):
         '''
         Docstring: funcion que borra las entradas en la tabla que hacen referencia a un tipo de observacion
-        Buscamos la idegeophobjectset (unica para cada tipo de observacion) y borraremos en cascada
+        Borraremos en cascada desde spatialsamplingfeature
         '''
         db=self.conectardb
         query = QSqlQuery(db)
@@ -2081,11 +2259,10 @@ class icgcPSI:
             m.setButtonText(QMessageBox.Cancel,"Cancelar")
             
             if m.exec_()==  QMessageBox.Ok:
-                print 'datos a borrar',datosaborrar
                 for nombre in datosaborrar:
                     #borrar en la base de datos
-                    minide,maxide=self.obtain_spatialsamplingrange(query,nombre)
-                    self.delete_observation(query,minide,maxide)
+                    if self.delete_observation(query,nombre)==1:
+                        return
                     #borrar el listwidget
                     item=self.dlg.listWidget.findItems(nombre,Qt.MatchRegExp)
                     self.dlg.listWidget.takeItem(self.dlg.listWidget.row(item[0]))
@@ -2104,120 +2281,39 @@ class icgcPSI:
             m.setButtonText(QMessageBox.Ok,"Aceptar")
             m.setButtonText(QMessageBox.Cancel,"Cancelar")
             if m.exec_()==  QMessageBox.Ok:
-                minide,maxide=self.obtain_spatialsamplingrange(query,self.dlg.listWidget.currentItem().text())
-                self.delete_observation(query,minide,maxide)
+                self.delete_observation(query,self.dlg.listWidget.currentItem().text())
                 self.Missatge(self.tr(u"Entrada esborrada\n"),'Informacio')
                 self.dlg.listWidget.takeItem(self.dlg.listWidget.currentRow())
             return
         
 
-    def delete_observation(self,query,minid,maxid):
-        '''
-        Docstring: funcion que borra las entradas en la tabla que hacen referencia a un tipo de observacion
-        Los inputs minid y maxid correspondenden al rango de ides de la tabla spatialsamplingfeature que hacen referencia
-        a un tipo de observacion en la tabla observationresult (ver la funcion obtain_spatialsamplingrange).
-        Estas ides tambien sirven para borrar la tabla geophobject.
-        NUCLEO DE LA FUNCION delete_observationname
-        '''    
-        
-        print 'maxid,minid entra',maxid,minid
-        #buscar id de geophobject en la tabla spatialsampling feature
-        #max(geophobject) para un tipo de medida
-
-        if query.exec_('SELECT public.spatialsamplingfeature.geophobject FROM public.spatialsamplingfeature WHERE '
-        +'public.spatialsamplingfeature.spatialsamplingid={};'.format(maxid))==0:
-            self.Missatge(self.tr(u"Error al buscar max(geoobject) en spatialsampling\n")+query.lastError().text())
-            return
-        else:
-            while query.next():
-                maxidobj=query.value(0)
-                print 'maxidobj',maxidobj
-                
-        #min(geophobject) para un tipo de medida
-        if query.exec_('SELECT public.spatialsamplingfeature.geophobject FROM public.spatialsamplingfeature WHERE '
-        +'public.spatialsamplingfeature.spatialsamplingid={};'.format(minid))==0:
-            self.Missatge(self.tr(u"Error al buscar min(geoobject) en spatialsampling\n")+query.lastError().text())
-            return
-        else:
-            while query.next():
-                minidobj=query.value(0)
-                print 'minidobj',minidobj
-        
-        #esta orden limpia las tablas observation/result, samplingresult, samplingfeature y spatialsamplingfeature (en cascada)       
-        if query.exec_('DELETE FROM public.spatialsamplingfeature WHERE spatialsamplingid>={0} and spatialsamplingid<={1};'.format(minid,maxid))==0:
-            self.Missatge(self.tr(u"Error al borrar les entrades a la taula spatialsampling\n")+query.lastError().text())
-            return 
-            
-        #falta borrar la tabla geophobject
-        if query.exec_('DELETE FROM public.geophobject WHERE geophobjectid>={0} and  geophobjectid<={1};'.format(minidobj,maxidobj))==0:
-            self.Missatge(self.tr(u"Error al borrar la taula geophobject\n")+query.lastError().text())
-            return 
-        return
-        
-    
-    def obtain_spatialsamplingrange(self,query,observacion):
+    def delete_observation(self,query,observacion):
         '''
         Docstring: devuelve el rango de ides asocociados a la observacion que queremos borrar 
         de la tabla spatialsamplingfeature
         para 1 registro= las ides de spatialsampling=geophonject=samplingfeature
         Hemos de encontrar el numero de registros (las ides) para un tipo de medida en observation result
-        '''   
-        #max(observationid) para un tipo de medida
-        if query.exec_('SELECT public.observationresult.observation FROM public.observationresult WHERE '
-        +'public.observationresult.name=\'{}\' ORDER BY public.observationresult.observationresultid DESC limit 1;'.format(observacion))==0:
-            self.Missatge(self.tr(u"Error al buscar max(observation) en observationresult\n")+query.lastError().text())
-            return
-        else:
-            while query.next():
-                maxid=query.value(0)
+        ''' 
+        start_time=time.time()
         
-        #min(observationid) para un tipo de medida
-        if query.exec_('SELECT public.observationresult.observation FROM public.observationresult WHERE '
-        +'public.observationresult.name=\'{}\' ORDER BY observationresultid ASC limit 1;'.format(observacion))==0:
-            self.Missatge(self.tr(u"Error al buscar min(observation) en observationresult\n")+query.lastError().text())
-            return
-        else:
-            while query.next():
-                minid=query.value(0)
+        #borramos la tabla observationresult y la tabla observation para un tipo de medida
+        if query.exec_('DELETE FROM observation WHERE observationid IN '
+        + '(SELECT public.observationresult.observation FROM public.observationresult WHERE '
+        +'public.observationresult.name=\'{}\');'.format(observacion))==0:
+            self.Missatge(self.tr(u"Error l'esborrar la taula observation \n")+query.lastError().text())
+            return True
 
-        print 'observacion,maxid,minid',observacion,maxid,minid
-        #buscar el mismo rango en la tabla samplingfeature  
-        #max(samplingfeatureid)
-        if query.exec_('SELECT samplingfeature FROM observation WHERE observationid={};'.format(maxid))==0:
-            self.Missatge(self.tr(u"Error al buscar samplingfeatureid en observation (maxid)\n")+query.lastError().text())
-            return
-        else:
-            while query.next():
-                maxidsamp=query.value(0)    
+        #borramos la tabla samplingresult
+        if query.exec_('DELETE FROM samplingresult WHERE samplingresultid IN '
+        + '(SELECT samplingresultid FROM samplingresult WHERE samplingresult.name LIKE \'{}%\');'.format(observacion))==0:
+            self.Missatge(self.tr(u"Error l'esborrar la taula samplingresult \n")+query.lastError().text())
+            return True      
         
-        #min(samplingfeatureid)
-        if query.exec_('SELECT samplingfeature FROM observation WHERE observationid={};'.format(minid))==0:
-            self.Missatge(self.tr(u"Error al buscar samplingfeatureid en observation (minid)\n")+query.lastError().text())
-            return
-        else:
-            while query.next():
-                minidsamp=query.value(0)
+        if os.isatty(1):
+            print 'Borrado todo para la observacion {}'.format(observacion)    
+            print '--- {} seconds ---'.format(time.time() - start_time)        
         
-        print 'samplinfeature,maxid,minid',maxidsamp,minidsamp
-        #buscar el mismo rango en spatialsamplingfeature
-        #max(spatialsamplingid)
-        if query.exec_('SELECT spatialsamplingfeature FROM samplingfeature WHERE samplingfeatureid={};'.format(maxidsamp))==0:
-            self.Missatge(self.tr(u"Error al buscar spataialsamplingfeature en samplingfeature (maxid)\n")+query.lastError().text())
-            return
-        else:
-            while query.next():
-                maxidspfeat=query.value(0)    
-        
-        #min(spatialsamplingid)
-        if query.exec_('SELECT spatialsamplingfeature FROM samplingfeature WHERE samplingfeatureid={};'.format(minidsamp))==0:
-            self.Missatge(self.tr(u"Error al buscar spataialsamplingfeature en samplingfeature (minid)\n")+query.lastError().text())
-            return
-        else:
-            while query.next():
-                minidspfeat=query.value(0)
-        
-        print 'spatialsampling,maxid,minid',maxidspfeat,minidspfeat       
-        return minidspfeat,maxidspfeat
+        return False
 
 
     def show_obsinfo(self):
