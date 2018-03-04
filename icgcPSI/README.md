@@ -7,6 +7,10 @@ TODO:
 - Problema con \\ y simbolos raros (editar a mano el nombre cuando se modifique).
 - La base de datos tiene problemas.
 
+v1.5beta.2 (4/3/2018)
+- Añadida carpeta de tests para realizar pruebas
+- Acabada la nueva implementacion de carga de datos y borrado. El peso del trabajo ahora lo lleva psql y no pyhton. Añadido ademas buscador de puntos duplicados.
+
 v1.5beta.1 (1/03/2018)
 Cambios menores
 - Añadidos print y cronometros para ver donde gasta mas tiempo.
