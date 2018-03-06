@@ -8,7 +8,7 @@ TODO:
 - La base de datos tiene problemas.
 
 v1.5beta.3 (6/3/2018)
-
+- Borrado de la tabla samplingfeature
 - Cambiado queryes de busqueda de duplicidades por otras mas simples
 
 v1.5beta.2 (4/3/2018)
