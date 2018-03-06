@@ -1410,7 +1410,7 @@ class icgcPSI:
         #end files loop---------------------------------
         self.Missatge(self.tr(u'Carrega de dades finalitzada'),'Informacio')
         
-
+        
     def writesamplingfeature(self,query,maxdates):
         '''
         Docstring: Funcion que escribe en la tabla samplingfeature
@@ -1425,20 +1425,46 @@ class icgcPSI:
             self.Missatge(self.tr(u"Error taula temporal (alter idsampfeat).\n")+query.lastError().text())
             return True        
         
-        #1 Buscamos la temporal.ids de los puntos no existentes en la tabla spatialsamplingfeature
-        orden1='SELECT temporal.ids FROM temporal WHERE temporal.idsspatialsamp NOT IN ' #los elementos que no estan
-        orden1+='(SELECT idsspatialsamp FROM temporal INTERSECT ' #en las dos tablas
-        orden1+='(SELECT spatialsamplingfeature FROM samplingfeature '
-        orden1+='WHERE validtime_begin=to_date(\'{}\',\'YYYYMMDD\') AND validtime_end=to_date(\'{}\',\'YYYYMMDD\')))'.format(maxdates[0],maxdates[1]) 
+        if query.exec_('SELECT COUNT(*) FROM temporal;')==0:
+            self.Missatge(self.tr(u"Error al COUNT elements taula temporal.\n")+query.lastError().text())
+            error = True
+            return error
+        while query.next():
+            numelem = query.value(0)  #numero de puntos en la tabla temporal         
         
-        #2 insertamos los nuevos puntos en la tabla spatialsamplingfeature
+        #separamos los insert en trozos de 900 elementos
+        ranges=range(1,numelem,900)
+        for num in range(1,len(ranges)):         
+            #Insertamos los puntos no existentes en la tabla samplingfeature
+                #buscar las ids de los puntos que faltan         
+            orden1='(SELECT temporal.ids FROM temporal WHERE temporal.ids>={} AND temporal.ids<{} AND '.format(ranges[num-1],ranges[num])
+            orden1+='temporal.idsspatialsamp NOT IN '
+            orden1+='(SELECT spatialsamplingfeature FROM samplingfeature '
+            orden1+='WHERE validtime_begin=to_date(\'{}\',\'YYYYMMDD\') '.format(maxdates[0])
+            orden1+='AND validtime_end=to_date(\'{}\',\'YYYYMMDD\')))'.format(maxdates[1])
+                #insertamos los nuevos puntos en la tabla samplingfeature
+            orden='INSERT INTO samplingfeature (spatialsamplingfeature,validtime_begin,validtime_end) '
+            orden+='SELECT idsspatialsamp,to_date(\'{}\',\'YYYYMMDD\'),to_date(\'{}\',\'YYYYMMDD\') '.format(maxdates[0],maxdates[1])
+            orden+='FROM temporal WHERE temporal.ids in ({}) ;'.format(orden1)
+            
+            if query.exec_(orden)==0:
+                self.Missatge(self.tr(u"Error al escriure a la taula samplingfeature els nous punts.\n")+query.lastError().text())
+                return True  
+        num=len(ranges)-1
+        #falta añadir los ultimos trozos                
+        orden1='(SELECT temporal.ids FROM temporal WHERE temporal.ids>={} AND '.format(ranges[num])
+        orden1+='temporal.idsspatialsamp NOT IN '
+        orden1+='(SELECT spatialsamplingfeature FROM samplingfeature '
+        orden1+='WHERE validtime_begin=to_date(\'{}\',\'YYYYMMDD\') '.format(maxdates[0])
+        orden1+='AND validtime_end=to_date(\'{}\',\'YYYYMMDD\')))'.format(maxdates[1])
+
         orden='INSERT INTO samplingfeature (spatialsamplingfeature,validtime_begin,validtime_end) '
         orden+='SELECT idsspatialsamp,to_date(\'{}\',\'YYYYMMDD\'),to_date(\'{}\',\'YYYYMMDD\') '.format(maxdates[0],maxdates[1])
         orden+='FROM temporal WHERE temporal.ids in ({}) ;'.format(orden1)
         if query.exec_(orden)==0:
             self.Missatge(self.tr(u"Error al escriure a la taula samplingfeature els nous punts.\n")+query.lastError().text())
-            return True                
-        
+            return True 
+
         #3 buscamos la samplingfeatureid de los puntos de la tabla temporal y lo insertamos en la columna temporal.idsampfeat
         #----------------------idssamptemporal----------------------
         orden='DROP TABLE IF EXISTS idssamptemporal;'
@@ -1456,11 +1482,25 @@ class icgcPSI:
             self.Missatge(self.tr(u"Error taula idssamptemporal (truncate).\n")+query.lastError().text())
             return True
 
+        for num in range(1,len(ranges)):  
+            orden+='INSERT INTO idssamptemporal (id_sptfeat) '
+            orden+='(SELECT samplingfeatureid FROM samplingfeature WHERE '
+            orden+='validtime_begin=to_date(\'{}\',\'YYYYMMDD\') AND validtime_end=to_date(\'{}\',\'YYYYMMDD\') '.format(maxdates[0],maxdates[1])
+            orden+='AND spatialsamplingfeature IN ' 
+            orden+='(SELECT temporal.idsspatialsamp FROM temporal WHERE '
+            orden+='temporal.ids>={} AND temporal.ids<{})); '.format(ranges[num-1],ranges[num])
+            if query.exec_(orden)==0:
+                self.Missatge(self.tr(u"Error al escriure a la taula idspatialsamptemporal el spatialsamplingid.\n")+query.lastError().text())
+            return True
+            
+        num=len(ranges)-1
+        #falta añadir los ultimos trozos  
         orden+='INSERT INTO idssamptemporal (id_sptfeat) '
-        orden+='(SELECT samplingfeatureid FROM samplingfeature WHERE spatialsamplingfeature IN ' #extraer la id
-        orden+='(SELECT temporal.idsspatialsamp FROM temporal INTERSECT '#buscar interseccion por spatialsampligfeature
-        orden+='(SELECT spatialsamplingfeature FROM samplingfeature WHERE ' #filtrar los valores por fecha
-        orden+='validtime_begin=to_date(\'{}\',\'YYYYMMDD\') AND validtime_end=to_date(\'{}\',\'YYYYMMDD\'))));'.format(maxdates[0],maxdates[1])
+        orden+='(SELECT samplingfeatureid FROM samplingfeature WHERE '
+        orden+='validtime_begin=to_date(\'{}\',\'YYYYMMDD\') AND validtime_end=to_date(\'{}\',\'YYYYMMDD\') '.format(maxdates[0],maxdates[1])
+        orden+='AND spatialsamplingfeature IN ' 
+        orden+='(SELECT temporal.idsspatialsamp FROM temporal WHERE '
+        orden+='temporal.ids>={})); '.format(ranges[num])
         if query.exec_(orden)==0:
             self.Missatge(self.tr(u"Error al escriure a la taula idspatialsamptemporal el spatialsamplingid.\n")+query.lastError().text())
             return True
@@ -1483,7 +1523,7 @@ class icgcPSI:
         
         return False #el error final
 
-    
+
     def writespatialsampling(self,query,idgeoset):
         '''
         Docstring: Funcion que escribe en la tabla spatialsamplingfeature.
@@ -1496,20 +1536,44 @@ class icgcPSI:
         orden='ALTER TABLE temporal ADD column idsspatialsamp int;' #añadimos id a la tabla de datos
         if query.exec_(orden)==0:
             self.Missatge(self.tr(u"Error taula temporal (alter idsspatialsamp).\n")+query.lastError().text())
-            return True        
+            return True
         
-        #1 Buscamos la temporal.ids de los puntos no existentes en la tabla spatialsamplingfeature
-        orden1='SELECT temporal.ids FROM temporal WHERE temporal.idsgeophobject NOT IN ' #los elementos que no estan
-        orden1+='(SELECT idsgeophobject FROM temporal INTERSECT ' #en las dos tablas
+        if query.exec_('SELECT COUNT(*) FROM temporal;')==0:
+            self.Missatge(self.tr(u"Error al COUNT elements taula temporal.\n")+query.lastError().text())
+            error = True
+            return error
+        while query.next():
+            numelem = query.value(0)  #numero de puntos en la tabla temporal  
+            
+            
+        #separamos los insert en trozos de 900 elementos
+        ranges=range(1,numelem,900)
+        for num in range(1,len(ranges)):    
+            #Insertamos los puntos no existentes en la tabla spatialsamplingfeature
+                #buscar las ids de los puntos que faltan   
+            orden1='(SELECT temporal.ids FROM temporal WHERE temporal.ids>={} AND temporal.ids<{} AND '.format(ranges[num-1],ranges[num])
+            orden1+='temporal.idsgeophobject NOT IN '
+            orden1+='(SELECT geophobject FROM spatialsamplingfeature WHERE geophobjectset={}))'.format(idgeoset)            
+                #insertamos los nuevos puntos en la tabla spatialsamplingfeature 
+            orden='INSERT INTO spatialsamplingfeature (geophobject,geophobjectset) '
+            orden+='(SELECT idsgeophobject,{} FROM temporal WHERE temporal.ids in ({})) ;'.format(idgeoset,orden1)
+            if query.exec_(orden)==0:
+                self.Missatge(self.tr(u"Error al escriure a la taula spatialsamplingfeature els nous punts.\n")+query.lastError().text())
+                error=True
+                return error        
+        num=len(ranges)-1
+        #falta añadir los ultimos trozos
+        orden1='(SELECT temporal.ids FROM temporal WHERE temporal.ids>={} AND '.format(ranges[num])
+        orden1+='temporal.idsgeophobject NOT IN '
         orden1+='(SELECT geophobject FROM spatialsamplingfeature WHERE geophobjectset={}))'.format(idgeoset) 
         
-        #2 insertamos los nuevos puntos en la tabla spatialsamplingfeature
         orden='INSERT INTO spatialsamplingfeature (geophobject,geophobjectset) '
-        orden+='SELECT idsgeophobject,{} FROM temporal WHERE temporal.ids in ({}) ;'.format(idgeoset,orden1)
+        orden+='(SELECT idsgeophobject,{} FROM temporal WHERE temporal.ids in ({})) ;'.format(idgeoset,orden1)
         if query.exec_(orden)==0:
-            self.Missatge(self.tr(u"Error al escriure a la taula spatialsamplingfeat els nous punts.\n")+query.lastError().text())
-            return True        
-        
+            self.Missatge(self.tr(u"Error al escriure a la taula spatialsamplingfeature els nous punts.\n")+query.lastError().text())
+            error=True
+            return error
+
         #3 buscamos la spatialsamplingid de los puntos de la tabla temporal y lo insertamos en la columna temporal.idsspatialsamp
         #----------------------idspatialsamptemporal----------------------
         orden='DROP TABLE IF EXISTS idspatialsamptemporal;'
@@ -1527,12 +1591,26 @@ class icgcPSI:
             self.Missatge(self.tr(u"Error taula idspatialsamptemporal (truncate).\n")+query.lastError().text())
             return True
 
+        #como antes, separamos los inserts en trozos de 900 elementos
+        for num in range(1,len(ranges)):
+            orden='INSERT INTO idspatialsamptemporal (id_sptfeat) '
+            orden+='(SELECT spatialsamplingid FROM spatialsamplingfeature WHERE geophobject IN '
+            orden+='(SELECT idsgeophobject FROM temporal WHERE '
+            orden+='temporal.ids>={} AND temporal.ids<{})); '.format(ranges[num-1],ranges[num])
+            if query.exec_(orden)==0:
+                self.Missatge(self.tr(u"Error al escriure a la taula idspatialsamptemporal el spatialsamplingid.\n")+query.lastError().text())
+                error=True
+                return error
+        #-los ultimos trozos
+        num=len(ranges)-1
         orden='INSERT INTO idspatialsamptemporal (id_sptfeat) '
-        orden+='(SELECT spatialsamplingid FROM spatialsamplingfeature WHERE geophobject in '
-        orden+='(SELECT idsgeophobject FROM temporal INTERSECT SELECT geophobject FROM spatialsamplingfeature WHERE geophobjectset={}));'.format(idgeoset)
+        orden+='(SELECT spatialsamplingid FROM spatialsamplingfeature WHERE geophobject IN '
+        orden+='(SELECT idsgeophobject FROM temporal WHERE '
+        orden+='temporal.ids>={})); '.format(ranges[num-1],ranges[num])
         if query.exec_(orden)==0:
             self.Missatge(self.tr(u"Error al escriure a la taula idspatialsamptemporal el spatialsamplingid.\n")+query.lastError().text())
-            return True
+            error=True
+            return error
 
         #ya tenemos la tabla idspatialsamptemporal llena, ahora pasamos los datos a la tabla temporal igualando las primary keys 
         orden='UPDATE temporal SET idsspatialsamp=id_sptfeat FROM idspatialsamptemporal WHERE temporal.ids=idspatialsamptemporal.id;'
@@ -1549,7 +1627,7 @@ class icgcPSI:
         if os.isatty(1):
             print 'Obtenidos spatialsamplingfeatureid de los puntos'       
             print '--- {} seconds ---'.format(time.time() - start_time)        
-        
+
         return False #el error final
     
 
@@ -1568,13 +1646,37 @@ class icgcPSI:
             self.Missatge(self.tr(u"Error taula temporal (alter geophobjectid).\n")+query.lastError().text())
             error=True
             return error
-            
-        #1 Buscamos la temporal.ids de los puntos no existentes en la tabla geophobject
-        orden1='SELECT temporal.ids FROM temporal WHERE temporal.ids not in ' #las temporal.ids que no esten en 
-        orden1+='(SELECT temporal.ids from temporal where \'es.icgc.ge.psi_\' || utmx || \'_\' || utmy in ' #en los elementos comunes en ambas tablas
-        orden1+='(SELECT \'es.icgc.ge.psi_\' || utmx || \'_\' || utmy from temporal INTERSECT SELECT inspireid FROM geophobject))'
         
-        #2 insertamos los nuevos puntos en la tabla geophobject        
+        if query.exec_('SELECT COUNT(*) FROM temporal;')==0:
+            self.Missatge(self.tr(u"Error al COUNT elements taula temporal.\n")+query.lastError().text())
+            error = True
+            return error
+        while query.next():
+            numelem = query.value(0)  #numero de puntos en la tabla temporal     
+        
+        #separamos los insert en trozos de 900 elementos
+        ranges=range(1,numelem,900)
+        for num in range(1,len(ranges)):
+            #Insertamos los puntos no existentes en la tabla geophobject
+                #buscar las ids de los puntos que faltan
+            orden1='(SELECT temporal.ids FROM temporal WHERE temporal.ids>={} AND temporal.ids<{} AND '.format(ranges[num-1],ranges[num])
+            orden1+='\'es.icgc.ge.psi_\' || utmx || \'_\' || utmy NOT IN '
+            orden1+='(SELECT inspireid FROM geophobject))'            
+                #insertamos los nuevos puntos en la tabla geophobject 
+            orden='INSERT INTO geophobject (inspireid, geologiccollection, projectedgeometry,height) '
+            orden+='SELECT \'es.icgc.ge.psi_\' || utmx || \'_\' || utmy, {},ST_SetSRID(ST_MakePoint(utmx, utmy), 25831), '.format(idgeocol)
+            orden+='height FROM temporal WHERE temporal.ids in ({});'.format(orden1)
+            if query.exec_(orden)==0:
+                self.Missatge(self.tr(u"Error al escriure a la taula geophobject els nous punts.\n")+query.lastError().text())
+                error=True
+                return error
+        
+        num=len(ranges)-1
+        #falta añadir los ultimos trozos
+        orden1='(SELECT temporal.ids FROM temporal WHERE temporal.ids>={} AND '.format(ranges[num]) #las temporal.ids que no esten en 
+        orden1+='\'es.icgc.ge.psi_\' || utmx || \'_\' || utmy NOT IN ' #en los elementos comunes en ambas tablas
+        orden1+='(SELECT inspireid FROM geophobject))'
+
         orden='INSERT INTO geophobject (inspireid, geologiccollection, projectedgeometry,height) '
         orden+='SELECT \'es.icgc.ge.psi_\' || utmx || \'_\' || utmy, {},ST_SetSRID(ST_MakePoint(utmx, utmy), 25831), '.format(idgeocol)
         orden+='height FROM temporal WHERE temporal.ids in ({});'.format(orden1)
@@ -1604,14 +1706,29 @@ class icgcPSI:
             error=True
             return error
 
+        #como antes, separamos los inserts en trozos de 900 elementos
+        for num in range(1,len(ranges)):
+            orden='INSERT INTO idgeotemporal (id_geo) '
+            orden+='(SELECT geophobjectid FROM geophobject WHERE inspireid IN '
+            orden+='(SELECT \'es.icgc.ge.psi_\' || utmx || \'_\' || utmy FROM temporal WHERE '
+            orden+='temporal.ids>={} AND temporal.ids<{})); '.format(ranges[num-1],ranges[num])
+            if query.exec_(orden)==0:
+                self.Missatge(self.tr(u"Error al escriure a la taula idgeotemporal el geophobjectid.\n")+query.lastError().text())
+                error=True
+                return error
+        #-los ultimos trozos
+        num=max(ranges)-1
         orden='INSERT INTO idgeotemporal (id_geo) '
-        orden+='(SELECT geophobjectid FROM geophobject WHERE inspireid in '
-        orden+='(SELECT \'es.icgc.ge.psi_\' || utmx || \'_\' || utmy from temporal INTERSECT SELECT inspireid FROM geophobject));'
+        orden+='(SELECT geophobjectid FROM geophobject WHERE inspireid IN '
+        orden+='(SELECT \'es.icgc.ge.psi_\' || utmx || \'_\' || utmy FROM temporal WHERE '
+        orden+='temporal.ids>={})); '.format(ranges[num])
+
         if query.exec_(orden)==0:
             self.Missatge(self.tr(u"Error al escriure a la taula idgeotemporal el geophobjectid.\n")+query.lastError().text())
             error=True
             return error
-
+        
+        
         #ya tenemos la tabla idgeotemporal llena, ahora pasamos los datos a la tabla temporal igualando las primary keys 
         orden='UPDATE temporal SET idsgeophobject=id_geo FROM idgeotemporal WHERE temporal.ids=idgeotemporal.id;'
         if query.exec_(orden)==0:
@@ -1630,7 +1747,7 @@ class icgcPSI:
             print 'Obtenidos geophobjectid de los puntos'       
             print '--- {} seconds ---'.format(time.time() - start_time)        
         return error
-        
+
         
 
     def importcsvtodb(self,query,archivo,numdates):
