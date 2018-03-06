@@ -2424,7 +2424,13 @@ class icgcPSI:
         if query.exec_('DELETE FROM samplingresult WHERE samplingresultid IN '
         + '(SELECT samplingresultid FROM samplingresult WHERE samplingresult.name LIKE \'{}%\');'.format(observacion))==0:
             self.Missatge(self.tr(u"Error l'esborrar la taula samplingresult \n")+query.lastError().text())
-            return True      
+            return True 
+            
+        #borramos la tabla samplingfeature
+        if query.exec_('DELETE FROM samplingfeature WHERE samplingfeatureid NOT IN '
+        + '(SELECT samplingfeature FROM samplingresult);'.format(observacion))==0:
+            self.Missatge(self.tr(u"Error l'esborrar la taula samplingfeature \n")+query.lastError().text())
+            return True        
         
         if os.isatty(1):
             print 'Borrado todo para la observacion {}'.format(observacion)    
