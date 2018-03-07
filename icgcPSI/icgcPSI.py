@@ -432,9 +432,13 @@ class icgcPSI:
         docs.append('')
         while query.next():
             docs.append(str(query.value(0)))
+        self.dlg.CBshortnamedoccit.clear()   
         self.dlg.CBshortnamedoccit.addItems(docs)
+        self.dlg.CBsprojdoccit.clear()
         self.dlg.CBsprojdoccit.addItems(docs)
+        self.dlg.CBdoccitdades.clear()
         self.dlg.CBdoccitdades.addItems(docs)
+        self.dlg.CBdistnfo.clear()
         self.dlg.CBdistnfo.addItems(docs)
         
         
@@ -451,7 +455,9 @@ class icgcPSI:
         geocol.append('')
         while query.next():
             geocol.append(str(query.value(0)))
+        self.dlg.CBgeocol.clear()
         self.dlg.CBgeocol.addItems(geocol)
+        self.dlg.CBgeocoldades.clear()
         self.dlg.CBgeocoldades.addItems(geocol)
         
         
@@ -468,9 +474,13 @@ class icgcPSI:
         campaings.append('')
         while query.next():
             campaings.append(str(query.value(0)))
+        self.dlg.CBcamp.clear()
         self.dlg.CBcamp.addItems(campaings)
+        self.dlg.CBcampdades.clear()
         self.dlg.CBcampdades.addItems(campaings)
+        self.dlg.campainglist.clear()
         self.dlg.campainglist.addItems(campaings)
+        self.dlg.CBdadescamp.clear()
         self.dlg.CBdadescamp.addItems(campaings)
         
         
