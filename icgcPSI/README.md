@@ -11,6 +11,7 @@ TODO:
 
 v1.5beta.4 (7/3/2018)
 - Añadido archivo auxiliar psi_zone.txt con todas las zonas que se pueden cargar. Si intentas cargar un archivo csv con un nombre diferente a lo que hay en ese archivo, da error y no se carga. Carga de este archivo auxiliar en psi_config.py.
+- Solucionado mas campos repetidos en los desplegables
 
 v1.5beta.3 (6/3/2018)
 - Borrado de la tabla samplingfeature
