@@ -6,6 +6,11 @@ TODO:
 -	Implementar el ST_Convex_hull para la geometría de todos los puntos.
 - Problema con \\ y simbolos raros (editar a mano el nombre cuando se modifique).
 - La base de datos tiene problemas.
+- Cambiar el mensaje de error de borrado de procesado y citacion si no se puede borrar pq aun esta en uso.
+
+
+v1.5beta.4 (7/3/2018)
+- Añadido archivo auxiliar psi_zone.txt con todas las zonas que se pueden cargar. Si intentas cargar un archivo csv con un nombre diferente a lo que hay en ese archivo, da error y no se carga. Carga de este archivo auxiliar en psi_config.py.
 
 v1.5beta.3 (6/3/2018)
 - Borrado de la tabla samplingfeature
