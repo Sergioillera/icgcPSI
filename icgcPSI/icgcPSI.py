@@ -34,7 +34,7 @@ import resources
 from icgcPSI_dialog import icgcPSIDialog
 import os
 import csv
-from psi_config import params
+from psi_config import params, filezone
 import time
 
 class icgcPSI:
@@ -1929,8 +1929,21 @@ class icgcPSI:
         Docstring: funcion que mira las dependencias al cargar los archivos de la carpet
                     Mirar dependencias implica que si cargas un tipo LOS, todos los que se derivan de esta medida
                     se han de borrar. Si la observacion ya esta, se borrara y se sustituye por la nueva del archivo.
+            input-list_files: lista de archivos.csv que va ha cargar
         '''
-        
+        #filezone contiene todos los archivos correctos posibles para leer (definido en psi_zone.txt)
+        #Antes de nada, vamos a ver si la lista de archivos se puede cargar o no
+        for archivo in list_files:
+            partes=archivo.split('_')
+            medida=partes[0]+'_'+partes[1]+'_'+partes[2]+'_'+partes[3]
+            try:
+                filezone.index(medida)
+            except ValueError: #no existe
+                msgerror='L\'arxiu que intentes carregar {} no es una zona/mesura valida.\n'.format(archivo)
+                msgerror+='Comprova les zones/mesures valides a l\'arxiu spi_zone.txt'
+                self.Missatge(self.tr(msgerror))
+                return True
+                
         #obtener la id de la campaña donde queremos subir los datos
         if self.dlg.cBdades.isChecked(): #carga total
             campname=self.dlg.CBcampdades.currentText()
@@ -1941,14 +1954,14 @@ class icgcPSI:
                                        'campaignid')
         if exist==0:
             self.Missatge(self.tr(u"Error al buscar el campaign ide"))
-            return
+            return True
         
         #obtener todos los id-geophobjectset asociados a la campaña
         if query.exec_('SELECT public.geophobjectset.geophobjectsetid FROM public.geophobjectset'
         +' JOIN public.campaign ON public.geophobjectset.campaign=public.campaign.campaignid'
         +' WHERE public.campaign.campaignid={};'.format(idcampaign))==0:
             self.Missatge(self.tr(u"Error a la consulta de la campanya y geophobjectset.\n")+query.lastError().text())
-            return
+            return True
         idgeopset=[]
         while query.next():
             idgeopset.append(query.value(0)) #todos los id-geophobjectset
@@ -1963,14 +1976,14 @@ class icgcPSI:
         +' LEFT JOIN public.geophobjectset ON public.spatialsamplingfeature.geophobjectset=public.geophobjectset.geophobjectsetid'
         +' WHERE public.geophobjectset.geophobjectsetid={};'.format(i))==0:
                 self.Missatge(self.tr(u"Error al consultar observation des de geophobjectset.\n")+query.lastError().text())
-                return
+                return True
             while query.next():
                 observaciones.append(query.value(0))
         
         todeleteobs=[]
         archivosLOS=[] #archivos LOS que vas a cargar LOS_ZONA
         
-        #ordenar la lista de archivos: primero los LOS..., crea lista de todos los archivos LOS que ba a cargar
+        #ordenar la lista de archivos: primero los LOS..., crea lista de todos los archivos LOS que va a cargar
         for i,archivo in enumerate(list_files):  
             if archivo.find('LOS'):
                 list_files.remove(list_files[i])

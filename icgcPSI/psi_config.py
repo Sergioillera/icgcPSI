@@ -6,17 +6,22 @@ Created on Mon Dec 18 16:53:24 2017
 """
 import os 
 
-
-params=[]#{}
+params=[]#{} conexion a la bd
 
 currentpath=os.path.dirname(__file__)
 currentpath=currentpath+'\\'
-
 archivo=open(currentpath+'config.txt','r')
 for row in archivo:
     params.append( row.replace('\n','').split('=')[1])
 archivo.close()
 params[3]=int(params[3])
+
+filezone=[]# lista de archivos posibles para cargar
+
+archivo=open(currentpath+'spi_zone.txt','r')
+for row in archivo:
+    filezone.append( row.replace('\n',''))
+archivo.close()
 
 '''
 params[0]="QPSQL"
