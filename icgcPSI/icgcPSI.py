@@ -1240,6 +1240,7 @@ class icgcPSI:
             
         error=self.check_dependencias(query,list_files) #check file dependencies
         if error:
+            self.dlg.progressBar.reset()
             return
         
         for num,files in enumerate(list_files): #read each csv file
@@ -1542,6 +1543,7 @@ class icgcPSI:
             print 'Obtenidos samplingfeatureid de los puntos'       
             print '--- {} seconds ---'.format(time.time() - start_time)        
         
+        self.dlg.progressBar.reset()
         return False #el error final
 
 
@@ -2045,7 +2047,6 @@ class icgcPSI:
                 medida=archivo.split('_')[2]+'_'+archivo.split('_')[3]+'_'
                 medida+=archivo.split('_')[4]+'_'+archivo[:-4].split('_')[5] #añadida la fecha init_fin
                 
-                
                 #comparar lo que cargas con la bdd y los LOS a cargar
                 existeLOS=False 
                 zonamedida=archivo.split('_')[3]
@@ -2053,6 +2054,8 @@ class icgcPSI:
 
                 #miramos en los archivos a cargar
                 for x in range(0,len(zonamedida),4):
+                
+                #miramos en los archivos que cargamos     
                     try:
                         existeLOS1=bool((archivosLOS.index('LOS_'+zonamedida[x:x+4]+fechamedida)>=0)) 
                     except ValueError:
@@ -2064,13 +2067,14 @@ class icgcPSI:
                     except ValueError:
                         existeLOS2=False
                         
-                existeLOS= existeLOS1 or existeLOS2
-                    
-                if existeLOS==0: #si una zona ya no existe, fuera
-                    error=True
-                    self.Missatge(self.tr(u'Cancelada la carrega de dades,\nno existeix un LOS a la base de dades.\n'
-                        'ni es carrega un arxiu LOS associat a aquesta zona.\nZona : {}'.format(zonamedida)))
-                    return error                
+                    existeLOS= existeLOS1 or existeLOS2
+                
+                    if existeLOS==0: #si una zona ya no existe, fuera
+                        error=True
+                        self.Missatge(self.tr(u'Cancelada la carrega de dades,\nno existeix un LOS a la base de dades,\n'
+                        'ni es carrega un arxiu LOS associat a aquesta zona \n'
+                        'amb aquestes rang de dates.\nZona : {}'.format(zonamedida+fechamedida)))
+                        return error                
                 
                 #borrar la observacion si ya existe en la campaña
                 for obs in observaciones:
@@ -2418,11 +2422,11 @@ class icgcPSI:
             #buscar las medidas relacionadas a este LOS
             nombre=self.dlg.listWidget.currentItem().text().split('_')
             coordenada=nombre[1]
-            fechas=+nombre[2]+'_'+nombre[3] #coordenada+fechainicio+fechafin
+            fechas=nombre[2]+'_'+nombre[3] #coordenada+fechainicio+fechafin
             datosaborrar=[]
             for i in range(self.dlg.listWidget.count()):
                 textitem=self.dlg.listWidget.item(i).text()
-                if coordenada and fechas in textitem:
+                if (coordenada in textitem) and (fechas in textitem):
                     datosaborrar.append(textitem) #todas las medidas derivadas del LOS con las coordenadas y fechas adecuadas
             m = QMessageBox()
             m.setIcon(QMessageBox.Warning)
