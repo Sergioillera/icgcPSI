@@ -6,7 +6,15 @@ TODO:
 -	Implementar el ST_Convex_hull para la geometría de todos los puntos.
 - Problema con \\ y simbolos raros (editar a mano el nombre cuando se modifique).
 - La base de datos tiene problemas.
-- Cambiar el mensaje de error de borrado de procesado y citacion si no se puede borrar pq aun esta en uso.
+
+v1.5beta.5 (8/3/2018)
+Cambios mayores:
+- El tag de la medida+zona no es suficiente para describirlo. A partir de ahora, se necesita tambien el rango de fechas (como aparece en el nombre del archivo). Modificado comparadores de medidas en check_dependencias para saber si puedes o no puedes subir la medida, lo mismo para borrar, etc..
+Ej: LOS_XY_FECHA1 != LOS_XY_FECHA2 (se consideran diferentes y se permite subir uno y el otro).
+    Cuando borres uno, el otro sigue vivo.
+    Lo mismo con las medidas que dependen del LOS.
+- Creada tabla que contiene las medidas introducidas en la bd sin necesidad de filtrar por la tabla observationresult. Mas rapidez para saber que hemos subido a la bd.
+- TabIII, cambio en la forma de mostrar los datos.
 
 
 v1.5beta.4 (7/3/2018)
