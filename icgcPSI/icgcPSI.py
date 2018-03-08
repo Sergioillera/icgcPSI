@@ -1271,7 +1271,7 @@ class icgcPSI:
             for i,fecha in enumerate(dates):
                 dates[i]=fecha.replace('D','')
         
-            maxdates.append(dates[0]);maxdates.append(dates[-1])
+            maxdates.append(files.split('_')[4]);maxdates.append(files[:-4].split('_')[5])
             numdates=len(dates) #numero de fechas que hay
             
             #progress bar and missages
@@ -1417,6 +1417,17 @@ class icgcPSI:
                 self.Missatge(self.tr(u"Error taula temporal (end drop).\n")+query.lastError().text())
                 return 
             self.dlg.progressBar.setValue(11+numdates)
+            
+            #añadimos registro en la tabla log_obs
+            initdate=files[:-4].split('_')[-2]
+            enddate=files[:-4].split('_')[-1]
+            orden='INSERT INTO log_obs(name, campaignid, geosetid, date_init, date_end) VALUES '
+            orden+='(\'{}\',{},{},'.format(name,idcampaign,idgeoset,)
+            orden+='to_date(\'{}\',\'YYYYMM\'),to_date(\'{}\',\'YYYYMM\'));'.format(initdate,enddate)
+            if query.exec_(orden)==0:
+                self.Missatge(self.tr(u"Error al actualizar tabla log_obs.\n")+query.lastError().text())
+                return
+            
         #end files loop---------------------------------
         self.Missatge(self.tr(u'Carrega de dades finalitzada'),'Informacio')
         
@@ -1450,11 +1461,11 @@ class icgcPSI:
             orden1='(SELECT temporal.ids FROM temporal WHERE temporal.ids>={} AND temporal.ids<{} AND '.format(ranges[num-1],ranges[num])
             orden1+='temporal.idsspatialsamp NOT IN '
             orden1+='(SELECT spatialsamplingfeature FROM samplingfeature '
-            orden1+='WHERE validtime_begin=to_date(\'{}\',\'YYYYMMDD\') '.format(maxdates[0])
-            orden1+='AND validtime_end=to_date(\'{}\',\'YYYYMMDD\')))'.format(maxdates[1])
+            orden1+='WHERE validtime_begin=to_date(\'{}\',\'YYYYMM\') '.format(maxdates[0])
+            orden1+='AND validtime_end=to_date(\'{}\',\'YYYYMM\')))'.format(maxdates[1])
                 #insertamos los nuevos puntos en la tabla samplingfeature
             orden='INSERT INTO samplingfeature (spatialsamplingfeature,validtime_begin,validtime_end) '
-            orden+='SELECT idsspatialsamp,to_date(\'{}\',\'YYYYMMDD\'),to_date(\'{}\',\'YYYYMMDD\') '.format(maxdates[0],maxdates[1])
+            orden+='SELECT idsspatialsamp,to_date(\'{}\',\'YYYYMM\'),to_date(\'{}\',\'YYYYMM\') '.format(maxdates[0],maxdates[1])
             orden+='FROM temporal WHERE temporal.ids in ({}) ;'.format(orden1)
             
             if query.exec_(orden)==0:
@@ -1465,11 +1476,11 @@ class icgcPSI:
         orden1='(SELECT temporal.ids FROM temporal WHERE temporal.ids>={} AND '.format(ranges[num])
         orden1+='temporal.idsspatialsamp NOT IN '
         orden1+='(SELECT spatialsamplingfeature FROM samplingfeature '
-        orden1+='WHERE validtime_begin=to_date(\'{}\',\'YYYYMMDD\') '.format(maxdates[0])
-        orden1+='AND validtime_end=to_date(\'{}\',\'YYYYMMDD\')))'.format(maxdates[1])
+        orden1+='WHERE validtime_begin=to_date(\'{}\',\'YYYYMM\') '.format(maxdates[0])
+        orden1+='AND validtime_end=to_date(\'{}\',\'YYYYMM\')))'.format(maxdates[1])
 
         orden='INSERT INTO samplingfeature (spatialsamplingfeature,validtime_begin,validtime_end) '
-        orden+='SELECT idsspatialsamp,to_date(\'{}\',\'YYYYMMDD\'),to_date(\'{}\',\'YYYYMMDD\') '.format(maxdates[0],maxdates[1])
+        orden+='SELECT idsspatialsamp,to_date(\'{}\',\'YYYYMM\'),to_date(\'{}\',\'YYYYMM\') '.format(maxdates[0],maxdates[1])
         orden+='FROM temporal WHERE temporal.ids in ({}) ;'.format(orden1)
         if query.exec_(orden)==0:
             self.Missatge(self.tr(u"Error al escriure a la taula samplingfeature els nous punts.\n")+query.lastError().text())
@@ -1936,7 +1947,7 @@ class icgcPSI:
  
     def check_dependencias(self,query,list_files):
         '''
-        Docstring: funcion que mira las dependencias al cargar los archivos de la carpet
+        Docstring: funcion que mira las dependencias al cargar los archivos de la carpeta
                     Mirar dependencias implica que si cargas un tipo LOS, todos los que se derivan de esta medida
                     se han de borrar. Si la observacion ya esta, se borrara y se sustituye por la nueva del archivo.
             input-list_files: lista de archivos.csv que va ha cargar
@@ -1975,79 +1986,96 @@ class icgcPSI:
         idgeopset=[]
         while query.next():
             idgeopset.append(query.value(0)) #todos los id-geophobjectset
-        
-        #obtener todos los tipos de medidas en la observation-result
+              
+        #obtenemos las medidas que ya hemos introducido desde la tabla log_obs
+            #creamos la tabla si no existe
+        orden='CREATE TABLE IF NOT EXISTS log_obs (id SERIAL PRIMARY KEY, name varchar(30), '
+        orden+='campaignid int, geosetid int, date_init date, date_end date);'
+        if query.exec_(orden)==0:
+            self.Missatge(self.tr(u"Error al crear la tabla log_obs.\n")+query.lastError().text())
+            return True
+            
+        #obtenemos los tipos de medidas ya existentes en la tabla en formato MEDIDA_ZONA_FECHAINIT_FECHAFIN
+            #mismo formato que los nombres de los archivo
+        orden='SELECT name,date_init,date_end FROM log_obs '
+        orden+='WHERE campaignid={} AND geosetid={}'.format(idcampaign,idgeopset[0])
+        observacion=[]; fecha_in=[]; fecha_end=[]  
+        if query.exec_(orden)==0: 
+            self.Missatge(self.tr(u"Error al consultar la tabla log_obs.\n")+query.lastError().text())
+            return True 
+        while query.next():
+            observacion.append(query.value(0))
+            fecha=query.value(1)
+            fecha_in.append(fecha.toString('yyyyMM'))
+            fecha=query.value(2)
+            fecha_end.append(fecha.toString('yyyyMM'))   
+            
+        #construir el formato adecuado
         observaciones=[]
-        for i in idgeopset:
-            if query.exec_('SELECT DISTINCT ON (name) name FROM public.observationresult JOIN'
-        +' public.observation ON public.observationresult.observation=public.observation.observationid'
-        +' LEFT JOIN public.samplingfeature ON public.observation.samplingfeature=public.samplingfeature.samplingfeatureid'
-        +' LEFT JOIN public.spatialsamplingfeature ON public.samplingfeature.spatialsamplingfeature=public.spatialsamplingfeature.spatialsamplingid '
-        +' LEFT JOIN public.geophobjectset ON public.spatialsamplingfeature.geophobjectset=public.geophobjectset.geophobjectsetid'
-        +' WHERE public.geophobjectset.geophobjectsetid={};'.format(i))==0:
-                self.Missatge(self.tr(u"Error al consultar observation des de geophobjectset.\n")+query.lastError().text())
-                return True
-            while query.next():
-                observaciones.append(query.value(0))
-        
+        if observacion!=[]: #existen observaciones   
+            for ind,obs in enumerate(observacion):
+                observaciones.append(obs+'_'+fecha_in[ind]+'_'+fecha_end[ind])
+                       
+        #filtrar todos  los LOS existentes en la bdd
+        zonaLOS=[]
+        for obs in observaciones:
+            if obs.find('LOS')>=0:
+                zonaLOS.append(obs) #contiene [LOS_ZONA_FECHA] de la bdd
+
         todeleteobs=[]
         archivosLOS=[] #archivos LOS que vas a cargar LOS_ZONA
-        
         #ordenar la lista de archivos: primero los LOS..., crea lista de todos los archivos LOS que va a cargar
-        for i,archivo in enumerate(list_files):  
-            if archivo.find('LOS'):
+        for i,archivo in enumerate(list_files):
+            if archivo.find('LOS')>=0:
                 list_files.remove(list_files[i])
                 list_files.insert(0,archivo)  
-                archivosLOS.append(archivo.split('_')[2]+'_'+archivo.split('_')[3])
-            
+                archivosLOS.append(archivo.split('_')[2]+'_'+archivo.split('_')[3]+'_'+archivo.split('_')[4]+'_'+archivo[:-4].split('_')[5]) #añadidas las fechas
+        
         for archivo in list_files:
             if archivo.find('LOS')>=0:
-                #es tipo LOS
-                mapcoord=archivo.split('_')[3] #mapa de la observacion
-                #borrar todos las observaciones con estas cordenadas
+                #es tipo LOS: LOS_+zona+FECHA
+                mapcoord='LOS_'+archivo.split('_')[3]+'_' #mapa de la observacion
+                mapcoord+=archivo.split('_')[4]+'_'+archivo[:-4].split('_')[5] #añadida la fecha init_fin
+                #borrar todos las observaciones con estas cordenadas y fechas
                 for obs in observaciones:
-                    if (obs.find(mapcoord)>=0) and (obs not in todeleteobs):
+                    if (obs.find(mapcoord)==0) and (obs not in todeleteobs):
                         todeleteobs.append(str(obs))
             else:
-                #no es tipo LOS
-                medida=archivo.split('_')[2]+'_'+archivo.split('_')[3] 
+                #no es tipo LOS: MEDIDA_ZONA_fecha
+                medida=archivo.split('_')[2]+'_'+archivo.split('_')[3]+'_'
+                medida+=archivo.split('_')[4]+'_'+archivo[:-4].split('_')[5] #añadida la fecha init_fin
                 
-                #ver si ya existe un LOS de esa zona en la bdd
-                #o si esta en la lista de los archivos que vas a cargar
-                
-                #filtrar todos  los LOS existentes en la bdd
-                zonaLOS=[]
-                for obs in observaciones:
-                    if obs.find('LOS')>=0:
-                        zonaLOS.append(obs) #contiene [LOS_ZONA] de la bdd
                 
                 #comparar lo que cargas con la bdd y los LOS a cargar
                 existeLOS=False 
                 zonamedida=archivo.split('_')[3]
+                fechamedida='_'+archivo.split('_')[4]+'_'+archivo[:-4].split('_')[5] #añadimos la fecha
 
+                #miramos en los archivos a cargar
                 for x in range(0,len(zonamedida),4):
                     try:
-                        existeLOS1=bool((archivosLOS.index('LOS_'+zonamedida[x:x+4])>=0)) #miramos en los archivos a cargar
+                        existeLOS1=bool((archivosLOS.index('LOS_'+zonamedida[x:x+4]+fechamedida)>=0)) 
                     except ValueError:
-                        existeLOS1=False  
-                        
+                        existeLOS1=False 
+                    
+                #miramos en las zonas cargadas en la bd      
                     try:
-                        existeLOS2=bool(zonaLOS.index('LOS_'+zonamedida[x:x+4])>=0) #miramos en las zonas cargadas
+                        existeLOS2=bool(zonaLOS.index('LOS_'+zonamedida[x:x+4]+fechamedida)>=0) 
                     except ValueError:
                         existeLOS2=False
                         
-                    existeLOS= existeLOS1 or existeLOS2
+                existeLOS= existeLOS1 or existeLOS2
                     
-                    if existeLOS==0: #si una zona ya no existe, fuera
-                        error=True
-                        self.Missatge(self.tr(u'Cancelada la carrega de dades,\nno existeix un LOS a la base de dades.\n'
+                if existeLOS==0: #si una zona ya no existe, fuera
+                    error=True
+                    self.Missatge(self.tr(u'Cancelada la carrega de dades,\nno existeix un LOS a la base de dades.\n'
                         'ni es carrega un arxiu LOS associat a aquesta zona.\nZona : {}'.format(zonamedida)))
-                        return error                
+                    return error                
                 
                 #borrar la observacion si ya existe en la campaña
                 for obs in observaciones:
                     if (obs.find(medida)>=0) and (obs not in todeleteobs):
-                        todeleteobs.append(obs)
+                        todeleteobs.append(obs)           
         
         error=False        
         if todeleteobs!=[]: #existen cosas a borrar
@@ -2329,12 +2357,13 @@ class icgcPSI:
         #populate the list widget
         #ask the bd for the geophonjectsetids associated to this campaign
         #obtain campaign id
+        
         exist,idcampaign = self.isinbd(query,'campaign','name',self.dlg.campainglist.currentText(),
                                        'campaignid')
         if exist==0:
             self.Missatge(self.tr(u"Error al buscar el campaign ide"))
             return
-        
+        '''
         if query.exec_('SELECT public.geophobjectset.geophobjectsetid FROM public.geophobjectset'
         +' WHERE public.geophobjectset.campaign={};'.format(idcampaign))==0:
             self.Missatge(self.tr(u"Error al consultar la campanya a a taula geophobjectset.\n")+query.lastError().text())
@@ -2344,32 +2373,39 @@ class icgcPSI:
             idgeopset.append(query.value(0))
 
         #from the idgeophobjectset is posible to obtain the measure type
+        '''
         self.dlg.listWidget.clear()
-        self.show_observationname(query,idgeopset)
+        self.show_observationname(query,idcampaign)
         
         if os.isatty(1):
             print 'Informacion de la campaña seleccionada'    
             print '--- {} seconds ---'.format(time.time() - start_time)
 
 
-    def show_observationname(self,query,ide):
+    def show_observationname(self,query,idecamp):
         '''
         Docstring: llena el list widget con los diferentes tipos de observacion que hay en la tabla observationresult
         '''
         start_time=time.time()
-        if query.exec_('SELECT DISTINCT ON (name) name FROM observationresult WHERE observation IN '
-            +'(SELECT observationid FROM observation WHERE samplingfeature IN '
-            +'(SELECT samplingfeatureid FROM samplingfeature WHERE spatialsamplingfeature IN ' 
-            +'(SELECT spatialsamplingid FROM spatialsamplingfeature WHERE geophobjectset={})));'.format(ide[0]))==0:  
-            self.Missatge(self.tr(u"Error al consultar observation des de geophobjectset.\n")+query.lastError().text())
+        if query.exec_('SELECT name,date_init,date_end FROM log_obs WHERE '
+            +'campaignid={}'.format(idecamp))==0:  
+            self.Missatge(self.tr(u"Error al consultar dades a log_obs.\n")+query.lastError().text())
             return
-        while query.next():
-            self.dlg.listWidget.addItems([query.value(0)])
             
+        observacion=[]; fecha_in=[]; fecha_end=[]     
+        while query.next():
+            observacion.append(query.value(0))
+            fecha=query.value(1)
+            fecha_in.append(fecha.toString('yyyyMM'))
+            fecha=query.value(2)
+            fecha_end.append(fecha.toString('yyyyMM'))
+            
+        for ind,obs in enumerate(observacion):
+            self.dlg.listWidget.addItems([obs+'_'+fecha_in[ind]+'_'+fecha_end[ind]])            
+     
         if os.isatty(1):
             print 'Mostrar los tipos de observaciones existentes'    
-            print '--- %s seconds ---'.format(time.time() - start_time)
-
+            print '--- {} seconds ---'.format(time.time() - start_time)
   
     def delete_observationname(self):
         '''
@@ -2382,11 +2418,12 @@ class icgcPSI:
             #buscar las medidas relacionadas a este LOS
             nombre=self.dlg.listWidget.currentItem().text().split('_')
             coordenada=nombre[1]
+            fechas=+nombre[2]+'_'+nombre[3] #coordenada+fechainicio+fechafin
             datosaborrar=[]
             for i in range(self.dlg.listWidget.count()):
                 textitem=self.dlg.listWidget.item(i).text()
-                if coordenada in textitem:
-                    datosaborrar.append(textitem) #todas las medidas derivadas del LOS con las coordenadas adecuadas
+                if coordenada and fechas in textitem:
+                    datosaborrar.append(textitem) #todas las medidas derivadas del LOS con las coordenadas y fechas adecuadas
             m = QMessageBox()
             m.setIcon(QMessageBox.Warning)
             m.setWindowTitle('Confirmar')
@@ -2421,7 +2458,8 @@ class icgcPSI:
             m.setButtonText(QMessageBox.Ok,"Aceptar")
             m.setButtonText(QMessageBox.Cancel,"Cancelar")
             if m.exec_()==  QMessageBox.Ok:
-                self.delete_observation(query,self.dlg.listWidget.currentItem().text())
+                if self.delete_observation(query,self.dlg.listWidget.currentItem().text())==1:
+                    return
                 self.Missatge(self.tr(u"Entrada esborrada\n"),'Informacio')
                 self.dlg.listWidget.takeItem(self.dlg.listWidget.currentRow())
             return
@@ -2433,27 +2471,50 @@ class icgcPSI:
         de la tabla spatialsamplingfeature
         para 1 registro= las ides de spatialsampling=geophonject=samplingfeature
         Hemos de encontrar el numero de registros (las ides) para un tipo de medida en observation result
+        input: MEDIDA_ZONA_fechain_fechaend
         ''' 
         start_time=time.time()
-        
-        #borramos la tabla observationresult y la tabla observation para un tipo de medida
-        if query.exec_('DELETE FROM observation WHERE observationid IN '
-        + '(SELECT public.observationresult.observation FROM public.observationresult WHERE '
-        +'public.observationresult.name=\'{}\');'.format(observacion))==0:
-            self.Missatge(self.tr(u"Error l'esborrar la taula observation \n")+query.lastError().text())
-            return True
+        sampfeat_inidate=observacion.split('_')[2]
+        sampfeat_enddate=observacion.split('_')[3]
+        medida_zona=observacion.split('_')[0]+'_'+observacion.split('_')[1]
 
         #borramos la tabla samplingresult
-        if query.exec_('DELETE FROM samplingresult WHERE samplingresultid IN '
-        + '(SELECT samplingresultid FROM samplingresult WHERE samplingresult.name LIKE \'{}%\');'.format(observacion))==0:
+        orden='DELETE FROM samplingresult WHERE samplingresultid IN '
+        orden+='(SELECT samplingresultid FROM samplingresult WHERE samplingresult.name LIKE \'{}%\' '.format(medida_zona)
+        orden+='AND samplingfeature IN '
+        orden+='(SELECT samplingfeatureid FROM samplingfeature WHERE '
+        orden+='validtime_begin=to_date(\'{}\',\'YYYYMM\') AND validtime_end=to_date(\'{}\',\'YYYYMM\')));'.format(sampfeat_inidate,sampfeat_enddate)
+        if query.exec_(orden)==0:
             self.Missatge(self.tr(u"Error l'esborrar la taula samplingresult \n")+query.lastError().text())
-            return True 
+            return True            
+
+
+        #borramos la tabla observation
+        orden='DELETE FROM observation WHERE observationid IN '
+        orden+='((SELECT observation FROM observationresult WHERE '
+        orden+='name=\'{}\') INTERSECT '.format(medida_zona)
+        orden+='(SELECT observationid FROM observation WHERE samplingfeature IN '
+        orden+='(SELECT samplingfeatureid FROM samplingfeature WHERE '
+        orden+='validtime_begin=to_date(\'{}\',\'YYYYMM\') AND '.format(sampfeat_inidate)
+        orden+='validtime_end=to_date(\'{}\',\'YYYYMM\'))));'.format(sampfeat_enddate)    
+        if query.exec_(orden)==0:
+            self.Missatge(self.tr(u"Error l'esborrar la taula observation \n")+query.lastError().text())
+            return True    
+            
             
         #borramos la tabla samplingfeature
         if query.exec_('DELETE FROM samplingfeature WHERE samplingfeatureid NOT IN '
         + '(SELECT samplingfeature FROM samplingresult);'.format(observacion))==0:
             self.Missatge(self.tr(u"Error l'esborrar la taula samplingfeature \n")+query.lastError().text())
-            return True        
+            return True   
+           
+        #borramos la observacion de la tabla log_obs
+        orden='DELETE FROM log_obs WHERE name=\'{}\' AND '.format(medida_zona)
+        orden+='date_init=to_date(\'{}\',\'YYYYMM\') AND '.format(sampfeat_inidate)
+        orden+='date_end=to_date(\'{}\',\'YYYYMM\');'.format(sampfeat_enddate)
+        if query.exec_(orden)==0:
+            self.Missatge(self.tr(u"Error l'esborrar la taula log_obs \n")+query.lastError().text())
+            return True   
         
         if os.isatty(1):
             print 'Borrado todo para la observacion {}'.format(observacion)    
@@ -2539,14 +2600,6 @@ class icgcPSI:
                 return
             while query.next():
                 ideprocessats.append(query.value(0)) 
-                
-            #buscar los citations asociados al geophobjectset que vamos a borrar
-#            idecits=[]
-#            if query.exec_('SELECT citation FROM public.geophobjectset WHERE public.geophobjectset.campaign={};'.format(idcamp))==0:
-#                self.Missatge(self.tr(u"Error al buscar les citacions a geoset per esborrar-las")+query.lastError().text())
-#                return
-#            while query.next():
-#                idecits.append(query.value(0))
                         
             for idegeoset in idgeosetincamp:
                 if query.exec_('SELECT inspireid FROM geophobjectset WHERE geophobjectsetid=\'{}\';'.format( idegeoset))==0:
@@ -2601,12 +2654,25 @@ class icgcPSI:
                 while query.next():
                     name=query.value(0)    
                 
-                if query.exec_('DELETE FROM processes WHERE processesid=\'{}\';'.format(ides)) ==0:
-                    self.Missatge(self.tr(u"Error al esborrar el processat de la campanya.\n")+query.lastError().text())
+                if query.exec_('SELECT COUNT(*) FROM geophobjectset WHERE process={}'.format(ides))==0:
+                    self.Missatge(self.tr(u"Error contar procesados en geoset")+query.lastError().text())
                     return
-                else:
-                    self.dlg.CBprocessats.removeItem(self.dlg.CBprocessats.findText(name.split('_')[1]))
+                while query.next():
+                    numero=query.value(0)
                 
+                if numero==0: #si puedes borrar el procesado pq no lo usa nadie mas
+                    if query.exec_('DELETE FROM processes WHERE processesid=\'{}\';'.format(ides)) ==0:
+                        self.Missatge(self.tr(u"Error al esborrar el processat de la campanya.\n")+query.lastError().text())
+                        return
+                    else:
+                        self.dlg.CBprocessats.removeItem(self.dlg.CBprocessats.findText(name.split('_')[1]))
+            
+            #limpiar la tabla log_obs
+            orden='DELETE FROM log_obs WHERE campaignid={};'.format(idcamp) 
+            if query.exec_(orden)==0:
+               self.Missatge(self.tr(u"Error al esborrar la campanya de la taula log_obs.\n")+query.lastError().text())
+               return 
+            
             #limpiar la tabla citacions
 #            for ides in idecits:
 #                if query.exec_('SELECT name FROM documentcitation WHERE documentcitationid=\'{}\''.format(ides))==0:
