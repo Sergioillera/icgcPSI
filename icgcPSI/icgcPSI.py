@@ -1991,11 +1991,18 @@ class icgcPSI:
               
         #obtenemos las medidas que ya hemos introducido desde la tabla log_obs
             #creamos la tabla si no existe
-        orden='CREATE TABLE IF NOT EXISTS log_obs (id SERIAL PRIMARY KEY, name varchar(30), '
-        orden+='campaignid int, geosetid int, date_init date, date_end date);'
+        orden='SELECT COUNT (name) FROM log_obs'
         if query.exec_(orden)==0:
-            self.Missatge(self.tr(u"Error al crear la tabla log_obs.\n")+query.lastError().text())
-            return True
+            Istabla=False
+        else:
+            Istabla=True
+            
+        if Istabla==False:   
+            orden='CREATE TABLE log_obs (id SERIAL PRIMARY KEY, name varchar(30), '
+            orden+='campaignid int, geosetid int, date_init date, date_end date);'
+            if query.exec_(orden)==0:
+                self.Missatge(self.tr(u"Error al crear la tabla log_obs.\n")+query.lastError().text())
+                return True
             
         #obtenemos los tipos de medidas ya existentes en la tabla en formato MEDIDA_ZONA_FECHAINIT_FECHAFIN
             #mismo formato que los nombres de los archivo
