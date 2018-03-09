@@ -7,6 +7,11 @@ TODO:
 - Problema con \\ y simbolos raros (editar a mano el nombre cuando se modifique).
 - La base de datos tiene problemas.
 
+(9/3/2018)
+
+Cambiado la creacion de la tabla log_obs. Problemas con el if not exists (psql version)
+
+
 v1.5beta.5 (8/3/2018)
 Cambios mayores:
 - El tag de la medida+zona no es suficiente para describirlo. A partir de ahora, se necesita tambien el rango de fechas (como aparece en el nombre del archivo). Modificado comparadores de medidas en check_dependencias para saber si puedes o no puedes subir la medida, lo mismo para borrar, etc..
