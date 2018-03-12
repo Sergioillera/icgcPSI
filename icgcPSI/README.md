@@ -8,6 +8,11 @@ TODO:
 - Mejorar los tiempos en los borrados.
 
 (12/3/2018)
+- Corregido un bug con el geosetid. Ahora deberia funcionar bien para los dos casos (carga total y parcial).
+- Modificado la pestaña III añadido con geoset, para mostrar las medidas por campaña y geoset. 
+- Mejoradas las querys para el borrado de observaciones.
+
+(12/3/2018)
 
 - Corregido bug en la obtencion de la idgeoset si no existe. Habia problemas entre la funcion check_dependencias y la writetogeoset.
 En el orden de llamada.
