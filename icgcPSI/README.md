@@ -5,7 +5,6 @@ ICGC plugin for PSI measurements.
 TODO:
 -	Implementar el ST_Convex_hull para la geometría de todos los puntos.
 - Problema con \\ y simbolos raros (editar a mano el nombre cuando se modifique).
-- Mejorar los tiempos en los borrados.
 
 (12/3/2018)
 - Corregido un bug con el geosetid. Ahora deberia funcionar bien para los dos casos (carga total y parcial).
