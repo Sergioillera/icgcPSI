@@ -7,6 +7,14 @@ TODO:
 - Problema con \\ y simbolos raros (editar a mano el nombre cuando se modifique).
 - La base de datos tiene problemas.
 
+(12/3/2018)
+
+Corregido bug en la obtencion de la idgeoset si no existe. Habia problemas entre la funcion check_dependencias y la writetogeoset.
+En el orden de llamada.
+
+Mejoradas las queryes para la carga de muchos datos 
+
+
 (9/3/2018)
 
 Cambiado la creacion de la tabla log_obs. Problemas con el if not exists (psql version)
