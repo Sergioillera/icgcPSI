@@ -5,14 +5,14 @@ ICGC plugin for PSI measurements.
 TODO:
 -	Implementar el ST_Convex_hull para la geometría de todos los puntos.
 - Problema con \\ y simbolos raros (editar a mano el nombre cuando se modifique).
-- La base de datos tiene problemas.
+- Mejorar los tiempos en los borrados.
 
 (12/3/2018)
 
-Corregido bug en la obtencion de la idgeoset si no existe. Habia problemas entre la funcion check_dependencias y la writetogeoset.
+- Corregido bug en la obtencion de la idgeoset si no existe. Habia problemas entre la funcion check_dependencias y la writetogeoset.
 En el orden de llamada.
 
-Mejoradas las queryes para la carga de muchos datos 
+- Mejoradas las queryes para la carga de muchos datos 
 
 
 (9/3/2018)
