@@ -11,7 +11,6 @@ TODO:
 
 - Corregido bug en la obtencion de la idgeoset si no existe. Habia problemas entre la funcion check_dependencias y la writetogeoset.
 En el orden de llamada.
-
 - Mejoradas las queryes para la carga de muchos datos 
 
 
