@@ -2468,6 +2468,9 @@ class icgcPSI:
         sampfeat_inidate=observacion.split('_')[2]
         sampfeat_enddate=observacion.split('_')[3]
         medida_zona=observacion.split('_')[0]+'_'+observacion.split('_')[1]
+        
+        if os.isatty(1):
+            print 'Borrando la observacion {} ...'.format(observacion)  
 
         orden='DELETE FROM spatialsamplingfeature where spatialsamplingid IN ( '
         orden+='(SELECT spatialsamplingid FROM spatialsamplingfeature WHERE geophobjectset={}) '.format(idgeoset[0])
@@ -2477,7 +2480,8 @@ class icgcPSI:
         orden+='(SELECT samplingfeatureid as idssamp FROM samplingfeature WHERE ' 
         orden+='validtime_begin=to_date(\'{}\',\'YYYYMM\') AND validtime_end=to_date(\'{}\',\'YYYYMM\') '.format(sampfeat_inidate,sampfeat_enddate)
         orden+='intersect '
-        orden+='select samplingfeature from samplingresult where samplingresult.name LIKE \'{}\') as foo)));'.format(medida_zona)
+        orden+='select samplingfeature from samplingresult where samplingresult.name LIKE \'{}%\') as foo)));'.format(medida_zona)
+        
         if query.exec_(orden)==0:
             self.Missatge(self.tr(u"Error a l'esborrar l' observacio. \n")+query.lastError().text())
             return True 
@@ -2555,64 +2559,52 @@ class icgcPSI:
         m.setButtonText(QMessageBox.Ok,"Aceptar")
         m.setButtonText(QMessageBox.Cancel,"Cancelar")
         if m.exec_()==  QMessageBox.Ok:
+            start_time=time.time()
+            
             if query.exec_('SELECT campaignid FROM public.campaign WHERE public.campaign.name=\'{}\';'.format(registro))==0:
-                self.Missatge(self.tr(u"Error al buscar el nom de la campanya per esborrarlan")+query.lastError().text())
+                self.Missatge(self.tr(u"Error al buscar el nom de la campanya per esborrarlan.\n")+query.lastError().text())
                 return
             while query.next():
                 idcamp=query.value(0)
-                
-            idgeosetincamp=[] #lista de idgeoset que pertenecen a la campaña
-            if query.exec_('SELECT geophobjectsetid FROM public.geophobjectset WHERE public.geophobjectset.campaign={};'.format(idcamp))==0:
-                self.Missatge(self.tr(u"Error al buscar el nom de la campanya per esborrarla")+query.lastError().text())
+            
+            #borramos los procesados que tiene dependencia del geoset
+            if os.isatty(1):
+                print 'Borrando procesados asociados...'  
+            orden='DELETE FROM processes WHERE geophobjectset IN '
+            orden='(SELECT geophobjectsetid FROM geophobjectset WHERE campaign={})'.format(idcamp)            
+            if query.exec_(orden)==0:
+                self.Missatge(self.tr(u"Error al esborrar els processats.\n")+query.lastError().text())
                 return
-            while query.next():
-                idgeosetincamp.append(query.value(0))
+            if os.isatty(1):
+                print 'Procesados borrados.' 
                 
-            #buscar los processat asociados al geophobjectset que vamos a borrar
-            ideprocessats=[]
-            if query.exec_('SELECT process FROM public.geophobjectset WHERE public.geophobjectset.campaign={};'.format(idcamp))==0:
-                self.Missatge(self.tr(u"Error al buscar els processes a geoset per esborrar-los")+query.lastError().text())
+            #borramos la tabla log_obs
+            if os.isatty(1):
+                print 'Borrando campaña de la tabla log_obs...'
+            orden='DELETE FROM log_obs WHERE campaignid={};'.format(idcamp) 
+            if query.exec_(orden)==0:
+               self.Missatge(self.tr(u"Error al esborrar la campanya de la taula log_obs.\n")+query.lastError().text())
+               return 
+            if os.isatty(1):
+                print 'Campaña en la tabla log_obs borrada.'
+                
+            #borramos geophobjectset (y borra todo lo que tiene por debajo)
+            if os.isatty(1):
+                print 'Borrando geosets de la campaña en la tabla geoset...'
+            orden='DELETE FROM geophobjectset WHERE campaign={};'.format(idcamp)
+            if query.exec_(orden)==0:
+                self.Missatge(self.tr(u"Error al borrar la taula geophobjset.\n")+query.lastError().text())
                 return
-            while query.next():
-                ideprocessats.append(query.value(0)) 
-                        
-            for idegeoset in idgeosetincamp:
-                if query.exec_('SELECT inspireid FROM geophobjectset WHERE geophobjectsetid=\'{}\';'.format( idegeoset))==0:
-                    self.Missatge(self.tr(u"Error al buscar InspireId del geophset per esborrar-lo")+query.lastError().text())
-                    return
-                while query.next():
-                    name=query.value(0) #nombre de geoset para borrarlo del combobox
-                    
-                #buscar los geophobjectid a este geoset (el rango de id's)
-                if query.exec_('SELECT geophobject FROM spatialsamplingfeature WHERE spatialsamplingfeature.geophobjectset={}'.format(idegeoset)
-                + ' ORDER BY geophobject DESC limit 1;')==0:
-                    self.Missatge(self.tr(u"Error al buscar max(gephobject) per borrar\n")+query.lastError().text())
-                    return
-                else:
-                    while query.next():
-                        maxid=query.value(0)    
-                if query.exec_('SELECT geophobject FROM spatialsamplingfeature WHERE spatialsamplingfeature.geophobjectset={}'.format(idegeoset)
-                + ' ORDER BY geophobject ASC limit 1;')==0:
-                    self.Missatge(self.tr(u"Error al buscar min(gephobject) per borrar\n")+query.lastError().text())
-                    return
-                else:
-                    while query.next():
-                        minid=query.value(0)
-                
-                # borra geoset (y todo lo que hay por debajo)
-                if query.exec_('DELETE FROM geophobjectset WHERE geophobjectsetid=\'{}\';'.format(idegeoset)) ==0:
-                    self.Missatge(self.tr(u"Error al borrar la taula geophobjset")+query.lastError().text())
-                    return
-                self.dlg.CBdadesgeoset.removeItem(self.dlg.CBdadesgeoset.findText(name))
-                
-                #borrar geoobject
-                if query.exec_('DELETE FROM geophobject WHERE geophobjectid>={} AND geophobjectid<={};'.format(minid,maxid)) ==0:
-                    self.Missatge(self.tr(u"Error al borrar la taula geophobject")+query.lastError().text())
-                    return
-                    
+            if os.isatty(1):
+                print 'Geosets de la campaña borrados.'
+            self.dlg.CBdadesgeoset.clear()
+            
             #limpiar la tabla campaña
-            if query.exec_('DELETE FROM campaign WHERE name=\'{}\';'.format(registro)) ==0:
-                self.Missatge(self.tr(u"Error al borrar la taula campanya")+query.lastError().text())
+            if os.isatty(1):
+                print 'Borrando campaña de la tabla campaign...'
+            orden='DELETE FROM campaign WHERE campaignid={};'.format(idcamp)
+            if query.exec_(orden) ==0:
+                self.Missatge(self.tr(u"Error al borrar la taula campanya.\n")+query.lastError().text())
             else:
                 self.Missatge(self.tr('Campanya: {} borrada'.format(registro)),'Informacio')
                 self.dlg.campainglist.removeItem(self.dlg.campainglist.findText(registro))
@@ -2620,31 +2612,10 @@ class icgcPSI:
                 self.dlg.CBcamp.removeItem(self.dlg.CBcamp.findText(registro))
                 self.dlg.CBcampdades.removeItem(self.dlg.CBcampdades.findText(registro))
                 self.dlg.listWidget.clear()
-                
-            #limpiar la tabla processats
-            for ides in ideprocessats:
-                if query.exec_('SELECT inspireid FROM processes WHERE processesid=\'{}\';'.format(ides))==0:
-                    self.Missatge(self.tr(u"Error al buscar InspireId del process per esborrar-lo")+query.lastError().text())
-                    return
-                while query.next():
-                    name=query.value(0)    
-                
-                if query.exec_('SELECT COUNT(*) FROM geophobjectset WHERE process={}'.format(ides))==0:
-                    self.Missatge(self.tr(u"Error contar procesados en geoset")+query.lastError().text())
-                    return
-                while query.next():
-                    numero=query.value(0)
-                
-                if numero==0: #si puedes borrar el procesado pq no lo usa nadie mas
-                    if query.exec_('DELETE FROM processes WHERE processesid=\'{}\';'.format(ides)) ==0:
-                        self.Missatge(self.tr(u"Error al esborrar el processat de la campanya.\n")+query.lastError().text())
-                        return
-            
-            #limpiar la tabla log_obs
-            orden='DELETE FROM log_obs WHERE campaignid={};'.format(idcamp) 
-            if query.exec_(orden)==0:
-               self.Missatge(self.tr(u"Error al esborrar la campanya de la taula log_obs.\n")+query.lastError().text())
-               return 
+               
+            if os.isatty(1):
+                print 'Campaña borrada {}'.format(registro)    
+                print '--- {} seconds ---'.format(time.time() - start_time)   
             
         else:
             pass #cancel option, do nothing
