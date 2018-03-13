@@ -41,7 +41,6 @@ class icgcPSI:
     """QGIS Plugin Implementation."""
 
     """ GLOBAL VARIABLES INSIDE THE CLASS"""
-    processat=[]
     Flagprocessat=False
     Flagcampaing=True
     conectardb={}
@@ -207,6 +206,7 @@ class icgcPSI:
             #tab2 checkbuttons hide the edit-modify button
         self.dlg.cBdades.stateChanged.connect(self.hide_geosetedit)
         self.dlg.cBdadespart.stateChanged.connect(self.hide_geosetedit)
+        self.dlg.cBdadespart.stateChanged.connect(self.show_processbut)
             #tab2 dades campaing combobox
         self.dlg.CBdadescamp.currentIndexChanged.connect(self.show_geoset)
         
@@ -259,6 +259,8 @@ class icgcPSI:
         self.dlg.lEloadpath.clear() #clear the label text box (load shp path)
         self.dlg.modgeoset.setVisible(False)
         self.dlg.modgeoset.setEnabled(False)
+        self.dlg.pBloadprocessat.setVisible(False)
+        self.dlg.pBloadprocessat.setEnabled(False)
         #----------------------------------------------------------------
         
         #tab3------------------------------------------------------------
@@ -281,7 +283,6 @@ class icgcPSI:
         #----------------------------------------------------------------
 
         #tab2------------------------------------------------------------
-        self.show_processats() #show list of precessats
         self.show_all_geoset() #show list of geosets of all campaings
         #----------------------------------------------------------------
         
@@ -327,25 +328,13 @@ class icgcPSI:
         self.dlg.lEloadpath.setText(path_dir)
         
     
-    def load_csvprocessat(self): #read csv processat file
+    def load_csvprocessat(self): #get path processat folder 
         self.dlg.pathcsvprocessat.clear()
-        csvprocessfile = QFileDialog.getOpenFileName(self.dlg, self.tr(u'Selecció arxiu processat'),'C:\Users')
-        self.dlg.pathcsvprocessat.setText(str(csvprocessfile))
-        self.processat=[]
-        self.Flagprocessat=False
-        if str(csvprocessfile)[-4:]=='.csv': #check if file is a csv
-            archivo=open(str(csvprocessfile),'r')
-            reader=csv.reader(archivo)
-            for row in reader:
-                row=row[0].split(';')
-                self.processat.append(row)
-            archivo.close()
-            self.Flagprocessat=True
-        else:
-            self.Missatge(self.tr(u"Arxiu no es .csv\n"))
-            csvprocessfile=''
-            self.dlg.pathcsvprocessat.clear()
-        return 
+        path_dir=QFileDialog().getExistingDirectory(
+            self.dlg,
+            'Open folder',
+            'C:\Users')
+        self.dlg.pathcsvprocessat.setText(path_dir)
             
     
 #------------------------------------------------------------------------------
@@ -513,20 +502,7 @@ class icgcPSI:
         self.dlg.CBdistnfo_void.clear()
         self.dlg.CBdistnfo_void.addItems(voids) #tble II metadates_void 
         
-        
-    def show_processats(self):
-        '''
-        Docstring: mostremos los processats en los comboboxs
-        '''        
-        db = self.conectardb 
-        query = QSqlQuery(db)
-        if query.exec_('SELECT DISTINCT ON (name) name FROM processes;')==0:
-            self.Missatge(self.tr(u"Error:{}\n".format(query.lastError().text())))
-        processats=[]
-        while query.next():
-            processats.append(str(query.value(0)))
-        self.dlg.CBprocessats.addItems(processats) #table II, list of processats
-        
+    
     def show_geoset(self):
         if self.dlg.CBdadescamp.currentText()==None or self.dlg.CBdadescamp.currentText()=='':  
             self.dlg.CBdadesgeoset.clear()
@@ -629,6 +605,13 @@ class icgcPSI:
             self.dlg.editgeoset.setVisible(True)
             self.dlg.editgeoset.setEnabled(True)
     
+    def show_processbut(self):
+        if self.dlg.cBdadespart.isChecked():
+            self.dlg.pBloadprocessat.setVisible(True)
+            self.dlg.pBloadprocessat.setEnabled(True)
+        else:
+            self.dlg.pBloadprocessat.setVisible(False)
+            self.dlg.pBloadprocessat.setEnabled(False)
 
 #----------------------------------------------------------------------------------
         
@@ -1112,61 +1095,104 @@ class icgcPSI:
         db = self.conectardb 
         query = QSqlQuery(db)
         
-        tabla='processes'
-        ide = self.obtain_max_id(query,tabla,'processesid') + 1
-        dataprocessat=self.processat
-        if dataprocessat==[]:
-            self.Missatge(self.tr(u"No hi ha dades de processat a carregar"))
+        start_time=time.time()
+        
+        #get folder path        
+        path_dir = self.dlg.pathcsvprocessat.text() # folder path
+        if path_dir=='':
+            self.Missatge(self.tr(u'Error. Tria una carpeta de dades!!')) 
             return
-        
-        #change '' for None's
-        for i in range(len(dataprocessat)):
-            if dataprocessat[i][1]=='':
-                dataprocessat[i][1]=None
-       
-        campos='processesid,inspireid,name,type,documentcitation,documentation_void,processparameter_name,processparameter_name_void'
-        campos+=',processparameter_description,processparameter_description_void,responsibleparty,responsibleparty_void'
-        campos+=',pixelarea,satellite,orbit,imagenum,firstimage,lastimage,date,incidenceangle'
-        
-        query.prepare('INSERT INTO {} ({}) VALUES (:0,:1,:2,:3,:4,:5,:6,:7,:8,:9,:10,:11,:12,:13,:14,:15,:16,:17,:18,:19);'.format(tabla,campos)) #no check nada
-        query.bindValue(':0',ide)
-        query.bindValue(':1','es.icgc.ge.psi_'+dataprocessat[0][1]) #inspire id
-        query.bindValue(':2',dataprocessat[0][1]) #name
-        query.bindValue(':3',dataprocessat[1][1]) #type 
-        query.bindValue(':4',dataprocessat[2][1]) #dataprocessat[2][1]) #doccitation
-        query.bindValue(':5',dataprocessat[3][1])   
-        query.bindValue(':6',dataprocessat[4][1]) #processparam_name        
-        query.bindValue(':7',dataprocessat[5][1])  
-        query.bindValue(':8',dataprocessat[6][1]) #processparam_deescription
-        query.bindValue(':9',dataprocessat[7][1])
-        query.bindValue(':10',dataprocessat[8][1]) #responsible
-        query.bindValue(':11',dataprocessat[9][1]) 
-        query.bindValue(':12',dataprocessat[10][1]) #pixelarea
-        query.bindValue(':13',dataprocessat[11][1]) #satellite   
-        query.bindValue(':14',dataprocessat[12][1]) #orbit
-        query.bindValue(':15',int(dataprocessat[13][1])) #imagenum
-        
-        date=dataprocessat[14][1].split('/')
-        fecha=date[2]+'-'+date[1]+'-'+date[0]
-        query.bindValue(':16',fecha) #firstimage
-        
-        date=dataprocessat[15][1].split('/')
-        fecha=date[2]+'-'+date[1]+'-'+date[0]
-        query.bindValue(':17',fecha) #lastimage
-        
-        date=dataprocessat[16][1].split('/')
-        fecha=date[2]+'-'+date[1]+'-'+date[0]
-        query.bindValue(':18',fecha) #date
-        
-        query.bindValue(':19',dataprocessat[17][1]) #incident angle
+            
+        files=os.listdir(str(path_dir))
+        list_files=[] #list all the csv files
+        for name in files:
+            try:
+                num=name.find('METADADES.csv')
+                if num>=0:
+                  list_files.append(name)  
+            except ValueError: 
+                pass
+                
+        if list_files==[]:
+            self.Missatge(self.tr(u'Error. No hi han arxius de METADADES per carregar a aqueta carpeta:\n{} !!'.format(path_dir)))
+            return
 
-        if query.exec_()==0:
-             self.Missatge(self.tr(u"Error al actualitzar la taula processes\n")+query.lastError().text())
-        else:
-             self.Missatge(self.tr(u"Processat carregat\n"),'Informacio') 
-             self.dlg.pathcsvprocessat.clear()
-             self.dlg.CBprocessats.addItems([dataprocessat[0][1]])
-        return 
+        #buscar la geoset id que necesitamos
+        orden='SELECT geophobjectsetid FROM geophobjectset WHERE inspireid=\'{}\';'.format(self.dlg.CBdadesgeoset.currentText())  
+        if query.exec_(orden)==0: 
+            self.Missatge(self.tr(u"Error al consultar la tabla geoset per els processats.\n")+query.lastError().text())
+            return True 
+        while query.next():
+            idgeoset=query.value(0)        
+        
+        for name in list_files: #corremos todos los archivos
+            archivo=open(path_dir+'\\'+name,'r')
+            reader=csv.reader(archivo)
+            processat=[]
+            for row in reader:
+                row=row[0].split(';')
+                processat.append(row)
+            archivo.close()
+            
+            if processat==[]:
+                self.Missatge(self.tr(u"No hi ha dades de processat a carregar"))
+                return
+        
+            #change '' for None's
+            for i in range(len(processat)):
+                if processat[i][1]=='':
+                    processat[i][1]=None
+                    
+            campos='inspireid,name,type,documentcitation,documentation_void,processparameter_name,processparameter_name_void'
+            campos+=',processparameter_description,processparameter_description_void,responsibleparty,responsibleparty_void'
+            campos+=',pixelarea,satellite,orbit,imagenum,firstimage,lastimage,date,incidenceangle,geophobjectset'
+        
+            query.prepare('INSERT INTO {} ({}) VALUES (:1,:2,:3,:4,:5,:6,:7,:8,:9,:10,:11,:12,:13,:14,:15,:16,:17,:18,:19,:20);'.format('processes',campos)) #no check nada
+            query.bindValue(':1','es.icgc.ge.psi_'+processat[0][1]) #inspire id
+            query.bindValue(':2',processat[0][1]) #name
+            query.bindValue(':3',processat[1][1]) #type 
+            query.bindValue(':4',processat[2][1]) #dataprocessat[2][1]) #doccitation
+            query.bindValue(':5',processat[3][1])   
+            query.bindValue(':6',processat[4][1]) #processparam_name        
+            query.bindValue(':7',processat[5][1])  
+            query.bindValue(':8',processat[6][1]) #processparam_deescription
+            query.bindValue(':9',processat[7][1])
+            query.bindValue(':10',processat[8][1]) #responsible
+            query.bindValue(':11',processat[9][1]) 
+            query.bindValue(':12',processat[10][1]) #pixelarea
+            query.bindValue(':13',processat[11][1]) #satellite   
+            query.bindValue(':14',processat[12][1]) #orbit
+            query.bindValue(':15',int(processat[13][1])) #imagenum
+        
+            date=processat[14][1].split('/')
+            fecha=date[2]+'-'+date[1]+'-'+date[0]
+            query.bindValue(':16',fecha) #firstimage
+        
+            date=processat[15][1].split('/')
+            fecha=date[2]+'-'+date[1]+'-'+date[0]
+            query.bindValue(':17',fecha) #lastimage
+        
+            date=processat[16][1].split('/')
+            fecha=date[2]+'-'+date[1]+'-'+date[0]
+            query.bindValue(':18',fecha) #date
+        
+            query.bindValue(':19',processat[17][1]) #incident angle
+            query.bindValue(':20',idgeoset) #geosetid
+
+            if query.exec_()==0:
+                self.Missatge(self.tr(u"Error al escriure a la taula processes\n")+query.lastError().text())
+                return
+            else:
+                if os.isatty(1):
+                    print 'Cargado procesado: {}'.format(name) 
+
+
+        if os.isatty(1):
+            print 'Finalizada carga de procesados'
+            print '--- {} seconds ---'.format(time.time() - start_time)  
+        
+        self.dlg.pathcsvprocessat.clear()
+        return #acaba
 
 
     def carregar_dades(self):
@@ -1217,12 +1243,6 @@ class icgcPSI:
                     self.Missatge(self.tr(u"Error al buscar el documentcitation ide"))
                     return
 
-            exist,idprocess = self.isinbd(query,'processes','name', #obtain processes id 
-                                       self.dlg.CBprocessats.currentText(),'processesid')
-            if exist==0:
-                self.Missatge(self.tr(u"Error al buscar el processes ide"))
-                return
-
             exist,idgeocol = self.isinbd(query,'geologiccollection','name',#obtain geocol id
                                        self.dlg.CBgeocoldades.currentText(),'geologiccollectionid')
             if exist==0:
@@ -1241,7 +1261,7 @@ class icgcPSI:
                 idgeopset=num+1 #añadimos el siguiente en la lista            
             
         else: #carga parcial: obtener de la geoset las id's anteriores SOLO DATOS
-            campos='geophobjectsetid,campaign,citation,process,geologiccollection'
+            campos='geophobjectsetid,campaign,citation,geologiccollection'
             if query.exec_('SELECT ({0}) FROM {1} WHERE {2}=\'{3}\';'.format(campos,'geophobjectset','Inspireid',self.dlg.CBdadesgeoset.currentText()))==0:
                 self.Missatge(self.tr(u"Error al consultar geoset.\n")+query.lastError().text())
                 return
@@ -1256,8 +1276,7 @@ class icgcPSI:
             idgeopset=ide[0]
             idcampaign=ide[1]
             idcitation=ide[2]
-            idprocess=ide[3]
-            idgeocol=ide[4]
+            idgeocol=ide[3]
             
         #aqui estan todas las id's definidas para los DOS casos
         #print 'todas las ids geoset,camp,cit,process,geocol',idgeopset,idcampaign,idcitation,idprocess,idgeocol
@@ -1288,7 +1307,7 @@ class icgcPSI:
 
             #write to geophobjectset 
             if (num ==0) and self.dlg.cBdades.isChecked(): #carga total 1a vez
-                error,idgeoset = self.write_to_geophobjectset(query,idcampaign,idcitation,idprocess,
+                error,idgeoset = self.write_to_geophobjectset(query,idcampaign,idcitation,
                                                            idgeocol,geometrygeoset)
                 if error:
                     self.Missatge(self.tr(u"Error al escriure a la taula geocollectionset"))
@@ -1844,7 +1863,7 @@ class icgcPSI:
         return header,geometry,maxrow
 
 
-    def write_to_geophobjectset(self,query,idcampaign,idcitation,idprocess,
+    def write_to_geophobjectset(self,query,idcampaign,idcitation,
                                                            idgeocol,geometrygeoset):
         '''
         Docstring: funcion que escribe en la tabla geophobjectset
@@ -1895,9 +1914,9 @@ class icgcPSI:
                                                             U2[0],U2[1],U3[0],U3[1],U4[0],U4[1],U5[0],U5[1])
         
         campos='geophobjectsetid,inspireid,distributioninfo,distributioninfo_void,largerwork,largerwork_void,projectedgeometry'
-        campos+=',geologiccollection,campaign,citation,process'
+        campos+=',geologiccollection,campaign,citation'
         
-        query.prepare('INSERT INTO {} ({}) VALUES (:0,:1,:2,:3,:4,:5,ST_GeomFromEWKT(:6),:7,:8,:9,:10);'.format(tabla,campos))
+        query.prepare('INSERT INTO {} ({}) VALUES (:0,:1,:2,:3,:4,:5,ST_GeomFromEWKT(:6),:7,:8,:9);'.format(tabla,campos))
         query.bindValue(':0',ide)
         query.bindValue(':1',self.dlg.lEgeosetinspireid.text()) #inspireid
         query.bindValue(':2',distribuinfo) #distribuinfo
@@ -1908,7 +1927,6 @@ class icgcPSI:
         query.bindValue(':7',idgeocol) #geocollection id
         query.bindValue(':8',idcampaign) #campaign id
         query.bindValue(':9',idcitation) #citation id
-        query.bindValue(':10',idprocess) #process id
         if query.exec_()==0:
             self.Missatge(self.tr(u"Error al actualitzar la taula {}.\n".format(tabla))+query.lastError().text())
             error=True
@@ -2080,7 +2098,7 @@ class icgcPSI:
             datos={}
             name=self.dlg.CBgeosetshow.currentText()
             campos='inspireid,distributioninfo,distributioninfo_void,largerwork,largerwork_void,geologiccollection'
-            campos=campos+',campaign,citation,process'
+            campos=campos+',campaign,citation'
             if query.exec_('SELECT ({}) FROM geophobjectset WHERE geophobjectset.inspireid=\'{}\';'.format(campos,name))==0:
                 self.Missatge(self.tr(u"Error al buscar informacio del geoset.\n")+query.lastError().text())
                 return
@@ -2148,12 +2166,7 @@ class icgcPSI:
                 self.dlg.CBdoccitdades.setCurrentIndex(self.dlg.CBdoccitdades.findText(nom)) 
             else:
                 self.dlg.CBdoccitdades.setCurrentIndex(0)
-            
-            error,nom=self.isinbd(query,'processes','processesid',datos[8],'name') #processes id->name           
-            if error <1:
-                self.Missatge(self.tr(u"Error al buscar processes from id.\n")+query.lastError().text())
-                return
-            self.dlg.CBprocessats.setCurrentIndex(self.dlg.CBprocessats.findText(nom)) 
+ 
        
         
     def mod_geoset(self):
@@ -2236,23 +2249,11 @@ class icgcPSI:
             if exist==0:
                 self.Missatge(self.tr(u"Error al buscar el documentcitation ide"))
                 return
-
-        #id process
-        if self.dlg.CBprocessats.currentText()=='':
-            self.Missatge(self.tr(u"Error. Selecciona un processat."))
-            return
-        else:
-            exist,idprocess = self.isinbd(query,'processes','name', #obtain processes id 
-                                       self.dlg.CBprocessats.currentText(),'processesid')
-            if exist==0:
-                self.Missatge(self.tr(u"Error al buscar el processes ide"))
-                return
-
        
         querytext='UPDATE {} SET inspireid=:1,distributioninfo=:2,distributioninfo_void=:3,largework=:4,'.format('geophobjectset')
-        querytext=querytext+'largework_void=:5,geologiccollection=:6,campaign=:7,citation=:8,process=:9 WHERE geophobjectsetid={};'.format(idegeoset)
+        querytext=querytext+'largework_void=:5,geologiccollection=:6,campaign=:7,citation=:8 WHERE geophobjectsetid={};'.format(idegeoset)
         
-        query.prepare('UPDATE {} SET inspireid=:1,distributioninfo=:2,distributioninfo_void=:3,largerwork=:4,largerwork_void=:5,geologiccollection=:6,campaign=:7,citation=:8,process=:9 WHERE geophobjectset.geophobjectsetid={};'.format('geophobjectset',idegeoset))
+        query.prepare('UPDATE {} SET inspireid=:1,distributioninfo=:2,distributioninfo_void=:3,largerwork=:4,largerwork_void=:5,geologiccollection=:6,campaign=:7,citation=:8 WHERE geophobjectset.geophobjectsetid={};'.format('geophobjectset',idegeoset))
         inspireid=self.dlg.lEgeosetinspireid.text()
         query.bindValue(':1',inspireid) #inspireid
         query.bindValue(':2',distribuinfo) #distribution info
@@ -2262,7 +2263,6 @@ class icgcPSI:
         query.bindValue(':6',idgeocol) #geocol id (projecte)
         query.bindValue(':7',idcampaign) #campaign id
         query.bindValue(':8',idcitation)
-        query.bindValue(':9',idprocess)
         
         if query.exec_()==0:
             self.Missatge(self.tr(u"Error al modificar el registre de la geoset.\n")+query.lastError().text())
@@ -2635,29 +2635,12 @@ class icgcPSI:
                     if query.exec_('DELETE FROM processes WHERE processesid=\'{}\';'.format(ides)) ==0:
                         self.Missatge(self.tr(u"Error al esborrar el processat de la campanya.\n")+query.lastError().text())
                         return
-                    else:
-                        self.dlg.CBprocessats.removeItem(self.dlg.CBprocessats.findText(name.split('_')[1]))
             
             #limpiar la tabla log_obs
             orden='DELETE FROM log_obs WHERE campaignid={};'.format(idcamp) 
             if query.exec_(orden)==0:
                self.Missatge(self.tr(u"Error al esborrar la campanya de la taula log_obs.\n")+query.lastError().text())
                return 
-            
-            #limpiar la tabla citacions
-#            for ides in idecits:
-#                if query.exec_('SELECT name FROM documentcitation WHERE documentcitationid=\'{}\''.format(ides))==0:
-#                    self.Missatge(self.tr(u"Error al buscar name del citation per esborrar-lo")+query.lastError().text())
-#                    return
-#                while query.next():
-#                    name=query.value(0)
-                
-#                if query.exec_('DELETE FROM documentcitation WHERE documentcitationid=\'{}\''.format(ides)) ==0:
-#                    self.Missatge(self.tr(u"Error al esborrar la documentcitation de la campanya")+query.lastError().text())
-#                    return
-#                else:
-#                    self.dlg.CBdoccitdades.removeItem(self.dlg.CBdoccitdades.findText(name))
-#                    self.dlg.CBshortnamedoccit.removeItem(self.dlg.CBshortnamedoccit.findText(name))
             
         else:
             pass #cancel option, do nothing
