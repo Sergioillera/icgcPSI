@@ -1118,6 +1118,10 @@ class icgcPSI:
             return
 
         #buscar la geoset id que necesitamos
+        if self.dlg.CBdadesgeoset.currentText()=='' or self.dlg.CBdadesgeoset.currentText()==None:
+            self.Missatge(self.tr(u"Selecciona un conjunt de dades.\n"))
+            return 
+                
         orden='SELECT geophobjectsetid FROM geophobjectset WHERE inspireid=\'{}\';'.format(self.dlg.CBdadesgeoset.currentText())  
         if query.exec_(orden)==0: 
             self.Missatge(self.tr(u"Error al consultar la tabla geoset per els processats.\n")+query.lastError().text())
