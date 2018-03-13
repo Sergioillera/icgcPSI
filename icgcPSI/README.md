@@ -5,6 +5,12 @@ ICGC plugin for PSI measurements.
 TODO:
 -	Implementar el ST_Convex_hull para la geometría de todos los puntos.
 - Problema con \\ y simbolos raros (editar a mano el nombre cuando se modifique).
+- Problemas en la funcion delete_campaign
+
+(13/3/2018)
+- Cambiada la forma de carga de los procesados. Cambiada la relacion entre las tablas processes y geoset
+- Cambiada la gui en la pestaña 2. Una vez se ha creado una geoset, podemos asignarle (cargar csv) de processados usando el boton que se activa si queremos cargar cosas parciales.
+
 
 (12/3/2018)
 - Corregido un bug con el geosetid. Ahora deberia funcionar bien para los dos casos (carga total y parcial).
