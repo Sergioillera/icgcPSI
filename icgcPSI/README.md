@@ -5,7 +5,11 @@ ICGC plugin for PSI measurements.
 TODO:
 - Implementar el ST_Convex_hull para la geometría de todos los puntos.
 - Problema con \\ y simbolos raros (editar a mano el nombre cuando se modifique).
+- Lento al borrar.
 
+(19/3/2018)
+- Cambiada la query que busca las ids en geophobject con los datos de temporal. Habia un problema si utmx,utmy estaba repetido.
+Cambiado IN a INNER JOIN.
 
 (13/3/2018)
 - Cambiada la forma de carga de los procesados. Cambiada la relacion entre las tablas processes y geoset
