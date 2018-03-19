@@ -1639,9 +1639,12 @@ class icgcPSI:
             print 'Escribiendo en tabla idspatialsamptemporal...' 
             
         orden='INSERT INTO idspatialsamptemporal (id_sptfeat) '
-        orden+='(SELECT spatialsamplingid FROM spatialsamplingfeature WHERE geophobjectset={} '.format(idgeoset)
-        orden+='AND geophobject IN ' 
-        orden+='(SELECT idsgeophobject FROM temporal));'
+        orden+='(SELECT spatialsamplingid FROM spatialsamplingfeature '
+        orden+='INNER JOIN temporal ON '
+        orden+='geophobject = idsgeophobject WHERE geophobjectset={});'.format(idgeoset)
+#        orden+='(SELECT spatialsamplingid FROM spatialsamplingfeature WHERE geophobjectset={} '.format(idgeoset)
+#        orden+='AND geophobject IN ' 
+#        orden+='(SELECT idsgeophobject FROM temporal));'
         if query.exec_(orden)==0:
             self.Missatge(self.tr(u"Error al escriure a la taula idspatialsamptemporal el spatialsamplingid.\n")+query.lastError().text())
             error=True
@@ -1727,8 +1730,10 @@ class icgcPSI:
             print 'Escribiendo en tabla idgeotemporal...'
             
         orden='INSERT INTO idgeotemporal (id_geo) '
-        orden+='(SELECT geophobjectid FROM geophobject WHERE inspireid IN '
-        orden+='(SELECT \'es.icgc.ge.psi_\' || utmx || \'_\' || utmy FROM temporal));'
+        orden+='(SELECT geophobjectid FROM geophobject INNER JOIN temporal ON '
+        orden+='inspireid=\'es.icgc.ge.psi_\' || utmx || \'_\' || utmy);'
+#        orden+='(SELECT geophobjectid FROM geophobject WHERE inspireid IN '
+#        orden+='(SELECT \'es.icgc.ge.psi_\' || utmx || \'_\' || utmy FROM temporal));'
 
         if query.exec_(orden)==0:
             self.Missatge(self.tr(u"Error al escriure a la taula idgeotemporal el geophobjectid.\n")+query.lastError().text())
