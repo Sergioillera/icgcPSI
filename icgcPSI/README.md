@@ -7,6 +7,10 @@ TODO:
 - Problema con \\ y simbolos raros (editar a mano el nombre cuando se modifique).
 - Lento al borrar.
 
+(1/5(2018)
+- Cambiadas las fechas de inicio y final a la primera y ultima columna de los datos (no lo que pone en el nombre del archivo)
+- Correcciones en la GUI (acentos)
+
 (19/3/2018)
 - Cambiada la query que busca las ids en geophobject con los datos de temporal. Habia un problema si utmx,utmy estaba repetido.
 Cambiado IN a INNER JOIN.
