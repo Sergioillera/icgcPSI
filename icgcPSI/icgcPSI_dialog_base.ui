@@ -1644,7 +1644,7 @@ metadades:</string>
       </property>
       <property name="text">
        <string>Motiu camp informe
-metadades esta buit</string>
+metadades està buit</string>
       </property>
      </widget>
      <widget class="QComboBox" name="CBdistnfo_void">
@@ -1672,8 +1672,8 @@ metadades esta buit</string>
        </font>
       </property>
       <property name="text">
-       <string>Motiu camp codi proyecte 
-ICGC esta buit</string>
+       <string>Motiu camp codi projecte 
+ICGC està buit</string>
       </property>
      </widget>
      <widget class="QComboBox" name="CBlargework_void">
@@ -1853,9 +1853,9 @@ ICGC esta buit</string>
      <widget class="QLabel" name="label_16">
       <property name="geometry">
        <rect>
-        <x>20</x>
+        <x>10</x>
         <y>293</y>
-        <width>131</width>
+        <width>141</width>
         <height>31</height>
        </rect>
       </property>
@@ -1867,8 +1867,8 @@ ICGC esta buit</string>
        </font>
       </property>
       <property name="text">
-       <string>Arxiu amb informació 
- del processat (.csv)</string>
+       <string>Carpeta amb informació 
+ dels processat (.csv)</string>
       </property>
      </widget>
      <widget class="QPushButton" name="pBloadcsvprocessat">
@@ -2030,7 +2030,7 @@ border-color: darkgray ;
        </font>
       </property>
       <property name="text">
-       <string>Carpeta on estan les dades (.csv)</string>
+       <string>Carpeta on estàn les dades (.csv)</string>
       </property>
      </widget>
      <widget class="QPushButton" name="pBcarregardades_2">
@@ -2166,7 +2166,7 @@ border-color: darkgray ;
       </font>
      </property>
      <property name="text">
-      <string>Obtenir Informació
+      <string>Obtenir informació
  de la campanya</string>
      </property>
     </widget>
@@ -2222,7 +2222,7 @@ border-color: darkgray ;
       <rect>
        <x>280</x>
        <y>20</y>
-       <width>161</width>
+       <width>181</width>
        <height>21</height>
       </rect>
      </property>

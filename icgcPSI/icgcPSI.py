@@ -422,7 +422,7 @@ class icgcPSI:
         docs=[]
         docs.append('')
         while query.next():
-            docs.append(str(query.value(0)))
+            docs.append(query.value(0).encode('utf-8','ignore'))
         self.dlg.CBshortnamedoccit.clear()   
         self.dlg.CBshortnamedoccit.addItems(docs)
         self.dlg.CBsprojdoccit.clear()
@@ -445,7 +445,7 @@ class icgcPSI:
         geocol=[]
         geocol.append('')
         while query.next():
-            geocol.append(str(query.value(0)))
+            geocol.append(str(query.value(0)).encode('utf-8','ignore'))
         self.dlg.CBgeocol.clear()
         self.dlg.CBgeocol.addItems(geocol)
         self.dlg.CBgeocoldades.clear()
@@ -464,7 +464,7 @@ class icgcPSI:
         campaings=[]
         campaings.append('')
         while query.next():
-            campaings.append(str(query.value(0)))
+            campaings.append(str(query.value(0)).encode('utf-8','ignore'))
         self.dlg.CBcamp.clear()
         self.dlg.CBcamp.addItems(campaings)
         self.dlg.CBcampdades.clear()
@@ -522,7 +522,7 @@ class icgcPSI:
                 self.Missatge(self.tr(u"Error:{}\n".format(query.lastError().text())))
             geosets=[]
             while query.next():
-                geosets.append(str(query.value(0)))
+                geosets.append(str(query.value(0)).encode('utf-8','ignore'))
             self.dlg.CBdadesgeoset.clear()
             self.dlg.CBdadesgeoset.addItems(geosets) #table II, list of processats
             
@@ -545,7 +545,7 @@ class icgcPSI:
                 self.Missatge(self.tr(u"Error:{}\n".format(query.lastError().text())))
             geosets=[]
             while query.next():
-                geosets.append(str(query.value(0)))
+                geosets.append(str(query.value(0)).encode('utf-8','ignore'))
             self.dlg.dadeslist.clear()
             self.dlg.dadeslist.addItems(geosets) #table II, list of processats    
     
@@ -559,7 +559,7 @@ class icgcPSI:
         geosets=[]
         geosets.append('')
         while query.next():
-            geosets.append(str(query.value(0)))
+            geosets.append(str(query.value(0)).encode('utf-8','ignore'))
         self.dlg.CBgeosetshow.addItems(geosets)
 #-----------------------------------------------------------------------------------    
 
@@ -706,7 +706,7 @@ class icgcPSI:
         db = self.conectardb 
         query = QSqlQuery(db)
         
-        name=self.dlg.CBshortnamedoccit.currentText()
+        name=self.dlg.CBshortnamedoccit.currentText().encode('utf-8','ignore')
         
         datos={}
         campos='name,shortname,date,link'
@@ -743,7 +743,7 @@ class icgcPSI:
         db = self.conectardb 
         query = QSqlQuery(db)
 
-        name=self.dlg.CBcamp.currentText()
+        name=self.dlg.CBcamp.currentText().encode('utf-8','ignore')
         if name=='':
             self.Missatge(self.tr(u"Selecciona una campanya"))
             return            
@@ -896,8 +896,8 @@ class icgcPSI:
         db=self.conectardb     #create the connection and the Query        
         query = QSqlQuery(db)
         
-        inspireid=self.dlg.QLEprojectcodi.text()
-        name=self.dlg.QLEprojectname.text()       
+        inspireid=self.dlg.QLEprojectcodi.text().encode('utf-8','ignore')
+        name=self.dlg.QLEprojectname.text().encode('utf-8','ignore')       
         
         if self.dlg.cBgeocol.isChecked()==False: #edit geocol
             exist,geocolid=self.isinbd(query,tabla,'name',self.dlg.CBgeocol.currentText(),'geologiccollectionid')
@@ -914,7 +914,7 @@ class icgcPSI:
         
         
         #referencia (to doccitation)
-        reference=self.dlg.CBsprojdoccit.currentText()
+        reference=self.dlg.CBsprojdoccit.currentText().encode('utf-8','ignore')
         if reference=='':
             if self.dlg.CBinformevoid.currentText()=='':
                self.Missatge(self.tr(u"El camp informe esta buit. Indica un motiu"))
@@ -1114,7 +1114,7 @@ class icgcPSI:
                 pass
                 
         if list_files==[]:
-            self.Missatge(self.tr(u'Error. No hi han arxius de METADADES per carregar a aqueta carpeta:\n{} !!'.format(path_dir)))
+            self.Missatge(self.tr(u'Error. No hi ha arxius de METADADES per carregar a aqueta carpeta:\n{} !!'.format(path_dir)))
             return
 
         #buscar la geoset id que necesitamos
@@ -1297,9 +1297,14 @@ class icgcPSI:
                 list_files.append(name)
         if list_files==[]:
             self.Missatge(self.tr(u'Error. No hi han arxius csv per carregar a aqueta carpeta:\n{} !!'.format(path_dir)))
-            return  
+            return 
         
-        error=self.check_dependencias(query,list_files,idcampaign,idgeopset) #check file dependencies
+        list_files_mod = self.rename_listfiles(path_dir,list_files) #rename las fechas de los nombres de los  archivos a 
+        #la 1 y ultima columna de datos
+        #list_files=nombres de los archivos en la carpeta
+        #list_files_mod = nombres de los archivos con las fechas cambiadas
+        
+        error=self.check_dependencias(query,list_files_mod,idcampaign,idgeopset) #check file dependencies
         
         if error:
             self.dlg.progressBar.reset()
@@ -1333,7 +1338,7 @@ class icgcPSI:
             for i,fecha in enumerate(dates):
                 dates[i]=fecha.replace('D','')
         
-            maxdates.append(files.split('_')[4]);maxdates.append(files[:-4].split('_')[5])
+            maxdates.append(dates[0]);maxdates.append(dates[-1])
             numdates=len(dates) #numero de fechas que hay
             
             #progress bar and missages
@@ -1487,11 +1492,9 @@ class icgcPSI:
             self.dlg.progressBar.setValue(11+numdates)
             
             #añadimos registro en la tabla log_obs
-            initdate=files[:-4].split('_')[-2]
-            enddate=files[:-4].split('_')[-1]
             orden='INSERT INTO log_obs(name, campaignid, geosetid, date_init, date_end) VALUES '
             orden+='(\'{}\',{},{},'.format(name,idcampaign,idgeopset)
-            orden+='to_date(\'{}\',\'YYYYMM\'),to_date(\'{}\',\'YYYYMM\'));'.format(initdate,enddate)
+            orden+='to_date(\'{}\',\'YYYYMMDD\'),to_date(\'{}\',\'YYYYMMDD\'));'.format(maxdates[0],maxdates[1])
             if query.exec_(orden)==0:
                 self.Missatge(self.tr(u"Error al actualizar tabla log_obs.\n")+query.lastError().text())
                 return
@@ -1521,14 +1524,14 @@ class icgcPSI:
             print 'Buscando registros repetidos en samplingfeature y actualizando...' 
             
         orden='INSERT INTO samplingfeature (spatialsamplingfeature,validtime_begin,validtime_end) ' 
-        orden+='SELECT idsspatialsamp,to_date(\'{}\',\'YYYYMM\'),to_date(\'{}\',\'YYYYMM\') '.format(maxdates[0],maxdates[1])
+        orden+='SELECT idsspatialsamp,to_date(\'{}\',\'YYYYMMDD\'),to_date(\'{}\',\'YYYYMMDD\') '.format(maxdates[0],maxdates[1])
         orden+='FROM temporal WHERE idsspatialsamp IN ' 
         orden+='(SELECT foo.ids FROM '
         orden+='(SELECT idsspatialsamp AS ids FROM temporal '
         orden+='EXCEPT '
         orden+='SELECT spatialsamplingfeature FROM samplingfeature '
-        orden+='WHERE validtime_begin=to_date(\'{}\',\'YYYYMM\') '.format(maxdates[0])
-        orden+='AND validtime_end=to_date(\'{}\',\'YYYYMM\')) as foo)   '.format(maxdates[1])
+        orden+='WHERE validtime_begin=to_date(\'{}\',\'YYYYMMDD\') '.format(maxdates[0])
+        orden+='AND validtime_end=to_date(\'{}\',\'YYYYMMDD\')) as foo)   '.format(maxdates[1])
         if query.exec_(orden)==0:
             self.Missatge(self.tr(u"Error al escriure a la taula samplingfeature els nous punts.\n")+query.lastError().text())
             return True 
@@ -1556,8 +1559,8 @@ class icgcPSI:
         orden='INSERT INTO idssamptemporal(id_sptfeat) '
         orden+='(SELECT foo.ids FROM  '
         orden+='(SELECT samplingfeatureid as ids,spatialsamplingfeature as spatials FROM samplingfeature '
-        orden+='WHERE validtime_begin=to_date(\'{}\',\'YYYYMM\') '.format(maxdates[0])
-        orden+='AND validtime_end=to_date(\'{}\',\'YYYYMM\')) as foo, temporal '.format(maxdates[1])
+        orden+='WHERE validtime_begin=to_date(\'{}\',\'YYYYMMDD\') '.format(maxdates[0])
+        orden+='AND validtime_end=to_date(\'{}\',\'YYYYMMDD\')) as foo, temporal '.format(maxdates[1])
         orden+='WHERE foo.spatials = temporal.idsspatialsamp);'
         if query.exec_(orden)==0:
             self.Missatge(self.tr(u"Error al escriure a la taula idspatialsamptemporal el spatialsamplingid.\n")+query.lastError().text())
@@ -1833,6 +1836,27 @@ class icgcPSI:
         return False #el error final
         
 
+    def rename_listfiles(self,path_dir,list_files):
+        #renombramos las fechas de los archivos (las que aparecen en su nombre) con las fechas de la primera y
+        #ultima columna de datos.
+        if os.isatty(1):
+            print 'renombrando archivos...'         
+        
+        lista_archivos=[]
+        for name in list_files:
+            archivo=open(path_dir+'\\'+name,'r')
+            reader=csv.reader(archivo,delimiter=';') 
+            for row in reader:
+                header=row
+                break
+            archivo.close()
+            init_dades=header.index('EFF_AREA')+1 
+            init_dates=header[init_dades].replace('D','')
+            fin_dates=header[-1].replace('D','')
+            name=name.split('_')[0]+'_'+name.split('_')[1] +'_'+name.split('_')[2] +'_'+name.split('_')[3]
+            lista_archivos.append(name+'_'+init_dates+'_'+fin_dates)
+        return lista_archivos
+
     def prelectura(self,archivo,header):
         
         if os.isatty(1):
@@ -1992,16 +2016,16 @@ class icgcPSI:
         while query.next():
             observacion.append(query.value(0))
             fecha=query.value(1)
-            fecha_in.append(fecha.toString('yyyyMM'))
+            fecha_in.append(fecha.toString('yyyyMMdd'))
             fecha=query.value(2)
-            fecha_end.append(fecha.toString('yyyyMM'))   
+            fecha_end.append(fecha.toString('yyyyMMdd'))   
             
         #construir el formato adecuado
         observaciones=[]
         if observacion!=[]: #existen observaciones   
             for ind,obs in enumerate(observacion):
                 observaciones.append(obs+'_'+fecha_in[ind]+'_'+fecha_end[ind])
-                       
+                      
         #filtrar todos  los LOS existentes en la bdd
         zonaLOS=[]
         for obs in observaciones:
@@ -2475,27 +2499,27 @@ class icgcPSI:
         medida_zona=observacion.split('_')[0]+'_'+observacion.split('_')[1]
         
         if os.isatty(1):
-            print 'Borrando la observacion {} ...'.format(observacion)  
-
+            print 'Borrando la observacion {} ...'.format(observacion) 
+            
         orden='DELETE FROM spatialsamplingfeature where spatialsamplingid IN ( '
         orden+='(SELECT spatialsamplingid FROM spatialsamplingfeature WHERE geophobjectset={}) '.format(idgeoset[0])
         orden+='INTERSECT '
         orden+='(select spatialsamplingfeature from samplingfeature where samplingfeatureid IN '
         orden+='(select foo.idssamp from '
         orden+='(SELECT samplingfeatureid as idssamp FROM samplingfeature WHERE ' 
-        orden+='validtime_begin=to_date(\'{}\',\'YYYYMM\') AND validtime_end=to_date(\'{}\',\'YYYYMM\') '.format(sampfeat_inidate,sampfeat_enddate)
+        orden+='validtime_begin=to_date(\'{}\',\'YYYYMMDD\') AND validtime_end=to_date(\'{}\',\'YYYYMMDD\') '.format(sampfeat_inidate,sampfeat_enddate)
         orden+='intersect '
         orden+='select samplingfeature from samplingresult where samplingresult.name LIKE \'{}%\') as foo)));'.format(medida_zona)
         
         if query.exec_(orden)==0:
             self.Missatge(self.tr(u"Error a l'esborrar l' observacio. \n")+query.lastError().text())
             return True 
-           
+   
         #borramos la observacion de la tabla log_obs
         orden='DELETE FROM log_obs WHERE name=\'{}\' AND '.format(medida_zona)
         orden+='geosetid={} AND '.format(idgeoset[0])
-        orden+='date_init=to_date(\'{}\',\'YYYYMM\') AND '.format(sampfeat_inidate)
-        orden+='date_end=to_date(\'{}\',\'YYYYMM\');'.format(sampfeat_enddate)
+        orden+='date_init=to_date(\'{}\',\'YYYYMMDD\') AND '.format(sampfeat_inidate)
+        orden+='date_end=to_date(\'{}\',\'YYYYMMDD\');'.format(sampfeat_enddate)
         if query.exec_(orden)==0:
             self.Missatge(self.tr(u"Error l'esborrar la taula log_obs \n")+query.lastError().text())
             return True   
