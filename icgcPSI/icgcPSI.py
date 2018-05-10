@@ -422,7 +422,7 @@ class icgcPSI:
         docs=[]
         docs.append('')
         while query.next():
-            docs.append(query.value(0).encode('utf-8','ignore'))
+            docs.append((query.value(0).encode('utf-8')).decode('utf-8'))
         self.dlg.CBshortnamedoccit.clear()   
         self.dlg.CBshortnamedoccit.addItems(docs)
         self.dlg.CBsprojdoccit.clear()
@@ -445,7 +445,7 @@ class icgcPSI:
         geocol=[]
         geocol.append('')
         while query.next():
-            geocol.append(str(query.value(0)).encode('utf-8','ignore'))
+            geocol.append((query.value(0).encode('utf-8')).decode('utf-8'))
         self.dlg.CBgeocol.clear()
         self.dlg.CBgeocol.addItems(geocol)
         self.dlg.CBgeocoldades.clear()
@@ -464,7 +464,7 @@ class icgcPSI:
         campaings=[]
         campaings.append('')
         while query.next():
-            campaings.append(str(query.value(0)).encode('utf-8','ignore'))
+            campaings.append((query.value(0).encode('utf-8')).decode('utf-8'))
         self.dlg.CBcamp.clear()
         self.dlg.CBcamp.addItems(campaings)
         self.dlg.CBcampdades.clear()
@@ -706,8 +706,7 @@ class icgcPSI:
         db = self.conectardb 
         query = QSqlQuery(db)
         
-        name=self.dlg.CBshortnamedoccit.currentText().encode('utf-8','ignore')
-        
+        name=self.dlg.CBshortnamedoccit.currentText()
         datos={}
         campos='name,shortname,date,link'
         if query.exec_('SELECT ({}) FROM documentcitation WHERE documentcitation.name=\'{}\';'.format(campos,name))==0:
@@ -1308,7 +1307,8 @@ class icgcPSI:
         
         if error:
             self.dlg.progressBar.reset()
-            return
+            return 
+        
         
         for num,files in enumerate(list_files): #read each csv file
             header=[]  #una lista      
@@ -1329,7 +1329,7 @@ class icgcPSI:
                     return
             else:
                 pass
-            
+                        
             #extraer la informacion necesaria del header del archivo csv            
             name=files.split('_')[2]+'_'+files.split('_')[3] #name for table
             init_dades=header.index('EFF_AREA')+1 #indice de la primera fecha en el header
@@ -1493,7 +1493,7 @@ class icgcPSI:
             
             #añadimos registro en la tabla log_obs
             orden='INSERT INTO log_obs(name, campaignid, geosetid, date_init, date_end) VALUES '
-            orden+='(\'{}\',{},{},'.format(name,idcampaign,idgeopset)
+            orden+='(\'{}\',{},{},'.format(name,idcampaign,idgeoset)
             orden+='to_date(\'{}\',\'YYYYMMDD\'),to_date(\'{}\',\'YYYYMMDD\'));'.format(maxdates[0],maxdates[1])
             if query.exec_(orden)==0:
                 self.Missatge(self.tr(u"Error al actualizar tabla log_obs.\n")+query.lastError().text())
@@ -1505,10 +1505,8 @@ class icgcPSI:
         
     def writesamplingfeature(self,query,maxdates):
         '''
-        Docstring: Funcion que escribe en la tabla samplingfeature
-        1 - Buscas los puntos que has de añadir (que no existes en samplingfeature),guardas su temporal.id
-        2 - Añades estos puntos a la tabla samplingfeature
-        3 - Buscas el samplingfeatureid de los puntos de la tabla temporal        
+        Docstring: Funcion que escribe en la tabla samplingfeature, lo escribe todo
+                    sin mirar repetidos ni nada
         '''
         if os.isatty(1):
             print 'Escribiendo en tabla samplingfeature...' 
@@ -1518,25 +1516,8 @@ class icgcPSI:
         orden='ALTER TABLE temporal ADD COLUMN idsampfeat int;' #añadimos id a la tabla de datos
         if query.exec_(orden)==0:
             self.Missatge(self.tr(u"Error taula temporal (alter idsampfeat).\n")+query.lastError().text())
-            return True               
-
-        if os.isatty(1):
-            print 'Buscando registros repetidos en samplingfeature y actualizando...' 
+            return True    
             
-        orden='INSERT INTO samplingfeature (spatialsamplingfeature,validtime_begin,validtime_end) ' 
-        orden+='SELECT idsspatialsamp,to_date(\'{}\',\'YYYYMMDD\'),to_date(\'{}\',\'YYYYMMDD\') '.format(maxdates[0],maxdates[1])
-        orden+='FROM temporal WHERE idsspatialsamp IN ' 
-        orden+='(SELECT foo.ids FROM '
-        orden+='(SELECT idsspatialsamp AS ids FROM temporal '
-        orden+='EXCEPT '
-        orden+='SELECT spatialsamplingfeature FROM samplingfeature '
-        orden+='WHERE validtime_begin=to_date(\'{}\',\'YYYYMMDD\') '.format(maxdates[0])
-        orden+='AND validtime_end=to_date(\'{}\',\'YYYYMMDD\')) as foo)   '.format(maxdates[1])
-        if query.exec_(orden)==0:
-            self.Missatge(self.tr(u"Error al escriure a la taula samplingfeature els nous punts.\n")+query.lastError().text())
-            return True 
-
-        #3 buscamos la samplingfeatureid de los puntos de la tabla temporal y lo insertamos en la columna temporal.idsampfeat
         #----------------------idssamptemporal----------------------
         orden='DROP TABLE IF EXISTS idssamptemporal;'
         if query.exec_(orden)==0:
@@ -1553,22 +1534,18 @@ class icgcPSI:
             self.Missatge(self.tr(u"Error taula idssamptemporal (truncate).\n")+query.lastError().text())
             return True
 
-        if os.isatty(1):
-            print 'Escribiendo en tabla idssamptemporal...' 
-            
-        orden='INSERT INTO idssamptemporal(id_sptfeat) '
-        orden+='(SELECT foo.ids FROM  '
-        orden+='(SELECT samplingfeatureid as ids,spatialsamplingfeature as spatials FROM samplingfeature '
-        orden+='WHERE validtime_begin=to_date(\'{}\',\'YYYYMMDD\') '.format(maxdates[0])
-        orden+='AND validtime_end=to_date(\'{}\',\'YYYYMMDD\')) as foo, temporal '.format(maxdates[1])
-        orden+='WHERE foo.spatials = temporal.idsspatialsamp);'
+        #con esto, escribimos en samplingfeature y las ids insertadas en la tabla temporal
+        orden='with rows as ('
+        orden+='INSERT INTO samplingfeature (spatialsamplingfeature,validtime_begin,validtime_end) '
+        orden+='SELECT idsspatialsamp,to_date(\'{}\',\'YYYYMMDD\'),to_date(\'{}\',\'YYYYMMDD\') '.format(maxdates[0],maxdates[1]) 
+        orden+='FROM temporal returning samplingfeatureid '
+        orden+=')'
+        orden+='INSERT INTO idssamptemporal (id_sptfeat) SELECT samplingfeatureid '
+        orden+='FROM rows;'
         if query.exec_(orden)==0:
-            self.Missatge(self.tr(u"Error al escriure a la taula idspatialsamptemporal el spatialsamplingid.\n")+query.lastError().text())
+            self.Missatge(self.tr(u"Error insert/id samplingfeature.\n")+query.lastError().text())
             return True
 
-        if os.isatty(1):
-            print 'Escribiendo ids en tabla temporal...'    
-            
         #ya tenemos la tabla idssamptemporal llena, ahora pasamos los datos a la tabla temporal igualando las primary keys 
         orden='UPDATE temporal SET idsampfeat=id_sptfeat FROM idssamptemporal WHERE temporal.ids=idssamptemporal.id;'
         if query.exec_(orden)==0:
@@ -1978,7 +1955,7 @@ class icgcPSI:
             input-list_files: lista de archivos.csv que va ha cargar
         '''
         #filezone contiene todos los archivos correctos posibles para leer (definido en psi_zone.txt)
-        #Antes de nada, vamos a ver si la lista de archivos se puede cargar o no
+        #Antes de nada, vamos a ver si la lista de archivos se puede cargar o no        
         for archivo in list_files:
             partes=archivo.split('_')
             medida=partes[0]+'_'+partes[1]+'_'+partes[2]+'_'+partes[3]
@@ -2039,13 +2016,13 @@ class icgcPSI:
             if archivo.find('LOS')>=0:
                 list_files.remove(list_files[i])
                 list_files.insert(0,archivo)  
-                archivosLOS.append(archivo.split('_')[2]+'_'+archivo.split('_')[3]+'_'+archivo.split('_')[4]+'_'+archivo[:-4].split('_')[5]) #añadidas las fechas
+                archivosLOS.append(archivo.split('_')[2]+'_'+archivo.split('_')[3]+'_'+archivo.split('_')[4]+'_'+archivo.split('_')[5]) #añadidas las fechas
         
         for archivo in list_files:
             if archivo.find('LOS')>=0:
                 #es tipo LOS: LOS_+zona+FECHA
                 mapcoord='LOS_'+archivo.split('_')[3]+'_' #mapa de la observacion
-                mapcoord+=archivo.split('_')[4]+'_'+archivo[:-4].split('_')[5] #añadida la fecha init_fin
+                mapcoord+=archivo.split('_')[4]+'_'+archivo.split('_')[5] #añadida la fecha init_fin
                 #borrar todos las observaciones con estas cordenadas y fechas
                 for obs in observaciones:
                     if (obs.find(mapcoord)==0) and (obs not in todeleteobs):
@@ -2053,12 +2030,12 @@ class icgcPSI:
             else:
                 #no es tipo LOS: MEDIDA_ZONA_fecha
                 medida=archivo.split('_')[2]+'_'+archivo.split('_')[3]+'_'
-                medida+=archivo.split('_')[4]+'_'+archivo[:-4].split('_')[5] #añadida la fecha init_fin
+                medida+=archivo.split('_')[4]+'_'+archivo.split('_')[5] #añadida la fecha init_fin
                 
                 #comparar lo que cargas con la bdd y los LOS a cargar
                 existeLOS=False 
                 zonamedida=archivo.split('_')[3]
-                fechamedida='_'+archivo.split('_')[4]+'_'+archivo[:-4].split('_')[5] #añadimos la fecha
+                fechamedida='_'+archivo.split('_')[4]+'_'+archivo.split('_')[5] #añadimos la fecha
 
                 #miramos en los archivos a cargar
                 for x in range(0,len(zonamedida),4):
@@ -2395,9 +2372,9 @@ class icgcPSI:
         while query.next():
             observacion.append(query.value(0))
             fecha=query.value(1)
-            fecha_in.append(fecha.toString('yyyyMM'))
+            fecha_in.append(fecha.toString('yyyyMMdd'))
             fecha=query.value(2)
-            fecha_end.append(fecha.toString('yyyyMM'))
+            fecha_end.append(fecha.toString('yyyyMMdd'))
             
         for ind,obs in enumerate(observacion):
             self.dlg.listWidget.addItems([obs+'_'+fecha_in[ind]+'_'+fecha_end[ind]])            
@@ -2501,15 +2478,13 @@ class icgcPSI:
         if os.isatty(1):
             print 'Borrando la observacion {} ...'.format(observacion) 
             
-        orden='DELETE FROM spatialsamplingfeature where spatialsamplingid IN ( '
-        orden+='(SELECT spatialsamplingid FROM spatialsamplingfeature WHERE geophobjectset={}) '.format(idgeoset[0])
-        orden+='INTERSECT '
-        orden+='(select spatialsamplingfeature from samplingfeature where samplingfeatureid IN '
-        orden+='(select foo.idssamp from '
-        orden+='(SELECT samplingfeatureid as idssamp FROM samplingfeature WHERE ' 
-        orden+='validtime_begin=to_date(\'{}\',\'YYYYMMDD\') AND validtime_end=to_date(\'{}\',\'YYYYMMDD\') '.format(sampfeat_inidate,sampfeat_enddate)
+        orden='DELETE FROM samplingfeature where samplingfeatureid IN ( '
+        orden+='select samplingfeature from samplingresult where samplingresult.name LIKE \'{}%\' '.format(medida_zona)
         orden+='intersect '
-        orden+='select samplingfeature from samplingresult where samplingresult.name LIKE \'{}%\') as foo)));'.format(medida_zona)
+        orden+='SELECT samplingfeatureid FROM samplingfeature WHERE ' 
+        orden+='validtime_begin=to_date(\'{}\',\'YYYYMMDD\') AND validtime_end=to_date(\'{}\',\'YYYYMMDD\') '.format(sampfeat_inidate,sampfeat_enddate) 
+        orden+='AND spatialsamplingfeature IN ' 
+        orden+='(select spatialsamplingid from spatialsamplingfeature where geophobjectset={}));'.format(idgeoset[0])     
         
         if query.exec_(orden)==0:
             self.Missatge(self.tr(u"Error a l'esborrar l' observacio. \n")+query.lastError().text())
