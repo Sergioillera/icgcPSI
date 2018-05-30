@@ -8,7 +8,7 @@ TODO:
 - Lento al borrar.
 
 (30/5/2018)
-Cambios en las fechas de asociadas a los nombres para las condiciones si los datos ya existen o no
+- Cambios en las fechas de asociadas a los nombres para las condiciones si los datos ya existen o no
 
 (1/5/2018)
 - Cambiadas las fechas de inicio y final a la primera y ultima columna de los datos (no lo que pone en el nombre del archivo)
