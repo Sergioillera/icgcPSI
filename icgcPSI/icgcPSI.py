@@ -1291,14 +1291,16 @@ class icgcPSI:
             
         files=os.listdir(str(path_dir))
         list_files=[] #list all the csv files
+        list_files_mod=[] #list all the csv files -.csv
         for name in files:
             if name[-4:]=='.csv':
                 list_files.append(name)
+                list_files_mod.append(name[:-4]) #el nombre ya no tiene el .csv
         if list_files==[]:
             self.Missatge(self.tr(u'Error. No hi han arxius csv per carregar a aqueta carpeta:\n{} !!'.format(path_dir)))
             return 
         
-        list_files_mod = self.rename_listfiles(path_dir,list_files) #rename las fechas de los nombres de los  archivos a 
+        #list_files_mod = self.rename_listfiles(path_dir,list_files) #rename las fechas de los nombres de los  archivos a 
         #la 1 y ultima columna de datos
         #list_files=nombres de los archivos en la carpeta
         #list_files_mod = nombres de los archivos con las fechas cambiadas
@@ -1494,7 +1496,7 @@ class icgcPSI:
             #añadimos registro en la tabla log_obs
             orden='INSERT INTO log_obs(name, campaignid, geosetid, date_init, date_end) VALUES '
             orden+='(\'{}\',{},{},'.format(name,idcampaign,idgeoset)
-            orden+='to_date(\'{}\',\'YYYYMMDD\'),to_date(\'{}\',\'YYYYMMDD\'));'.format(maxdates[0],maxdates[1])
+            orden+='to_date(\'{}\',\'YYYYMM\'),to_date(\'{}\',\'YYYYMM\'));'.format(maxdates[0][:-2],maxdates[1][:-2]) #no day
             if query.exec_(orden)==0:
                 self.Missatge(self.tr(u"Error al actualizar tabla log_obs.\n")+query.lastError().text())
                 return
@@ -1993,9 +1995,9 @@ class icgcPSI:
         while query.next():
             observacion.append(query.value(0))
             fecha=query.value(1)
-            fecha_in.append(fecha.toString('yyyyMMdd'))
+            fecha_in.append(fecha.toString('yyyyMM')) #solo nos quedamos con año y mes
             fecha=query.value(2)
-            fecha_end.append(fecha.toString('yyyyMMdd'))   
+            fecha_end.append(fecha.toString('yyyyMM'))   
             
         #construir el formato adecuado
         observaciones=[]
@@ -2372,9 +2374,9 @@ class icgcPSI:
         while query.next():
             observacion.append(query.value(0))
             fecha=query.value(1)
-            fecha_in.append(fecha.toString('yyyyMMdd'))
+            fecha_in.append(fecha.toString('yyyyMM'))
             fecha=query.value(2)
-            fecha_end.append(fecha.toString('yyyyMMdd'))
+            fecha_end.append(fecha.toString('yyyyMM'))
             
         for ind,obs in enumerate(observacion):
             self.dlg.listWidget.addItems([obs+'_'+fecha_in[ind]+'_'+fecha_end[ind]])            
@@ -2471,8 +2473,8 @@ class icgcPSI:
         input: MEDIDA_ZONA_fechain_fechaend
         ''' 
         start_time=time.time()
-        sampfeat_inidate=observacion.split('_')[2]
-        sampfeat_enddate=observacion.split('_')[3]
+        sampfeat_inidate=observacion.split('_')[2] #YYYYMM
+        sampfeat_enddate=observacion.split('_')[3] #YYYYMM
         medida_zona=observacion.split('_')[0]+'_'+observacion.split('_')[1]
         
         if os.isatty(1):
@@ -2482,7 +2484,7 @@ class icgcPSI:
         orden+='select samplingfeature from samplingresult where samplingresult.name LIKE \'{}%\' '.format(medida_zona)
         orden+='intersect '
         orden+='SELECT samplingfeatureid FROM samplingfeature WHERE ' 
-        orden+='validtime_begin=to_date(\'{}\',\'YYYYMMDD\') AND validtime_end=to_date(\'{}\',\'YYYYMMDD\') '.format(sampfeat_inidate,sampfeat_enddate) 
+        orden+='to_char(validtime_begin,\'YYYYMM\')=\'{}\' AND to_char(validtime_end,\'YYYYMM\')=\'{}\' '.format(sampfeat_inidate,sampfeat_enddate) 
         orden+='AND spatialsamplingfeature IN ' 
         orden+='(select spatialsamplingid from spatialsamplingfeature where geophobjectset={}));'.format(idgeoset[0])     
         
@@ -2493,8 +2495,8 @@ class icgcPSI:
         #borramos la observacion de la tabla log_obs
         orden='DELETE FROM log_obs WHERE name=\'{}\' AND '.format(medida_zona)
         orden+='geosetid={} AND '.format(idgeoset[0])
-        orden+='date_init=to_date(\'{}\',\'YYYYMMDD\') AND '.format(sampfeat_inidate)
-        orden+='date_end=to_date(\'{}\',\'YYYYMMDD\');'.format(sampfeat_enddate)
+        orden+='date_init=to_date(\'{}\',\'YYYYMM\') AND '.format(sampfeat_inidate) #year and month 
+        orden+='date_end=to_date(\'{}\',\'YYYYMM\');'.format(sampfeat_enddate)
         if query.exec_(orden)==0:
             self.Missatge(self.tr(u"Error l'esborrar la taula log_obs \n")+query.lastError().text())
             return True   
