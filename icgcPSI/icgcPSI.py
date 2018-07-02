@@ -44,6 +44,7 @@ class icgcPSI:
     Flagprocessat=False
     Flagcampaing=True
     conectardb={}
+    FlagDebug=True
 
     def __init__(self, iface):
         """Constructor.
@@ -719,7 +720,6 @@ class icgcPSI:
         datos=datos.replace('(','')
         datos=datos.replace(')','')
         datos=datos.split(',')
-        print datos
         #populate the labels
         self.dlg.QLEname.clear() #name
         self.dlg.QLEname.setText(str(datos[0].replace('"','')))
@@ -1186,11 +1186,11 @@ class icgcPSI:
                 self.Missatge(self.tr(u"Error al escriure a la taula processes\n")+query.lastError().text())
                 return
             else:
-                if os.isatty(1):
+                if self.FlagDebug:
                     print 'Cargado procesado: {}'.format(name) 
 
 
-        if os.isatty(1):
+        if self.FlagDebug:
             print 'Finalizada carga de procesados'
             print '--- {} seconds ---'.format(time.time() - start_time)  
         
@@ -1375,7 +1375,7 @@ class icgcPSI:
             #-------------------------------------------------------------------------------
             tipo=['_VEL','_V_STDEV','_COH']
             #-----------------------velocidades
-            if os.isatty(1):
+            if self.FlagDebug:
                 print 'Cargando datos de velocidad...' 
             start_time = time.time() #tiempo
             orden='INSERT INTO samplingresult(samplingfeature,value,name) '
@@ -1384,12 +1384,12 @@ class icgcPSI:
                 self.Missatge(self.tr(u"Error a la taula samplingresult (velocitats).\n")+query.lastError().text())
                 return
             self.dlg.progressBar.setValue(6)
-            if os.isatty(1):
+            if self.FlagDebug:
                 print 'Cargados datos de velocidad'       
                 print '--- {} seconds ---'.format(time.time() - start_time)            
             
             #-----------------------v_std 
-            if os.isatty(1):
+            if self.FlagDebug:
                 print 'Cargando datos de v_std...' 
             start_time = time.time() #tiempo
             orden='INSERT INTO samplingresult(samplingfeature,value,name) '
@@ -1398,12 +1398,12 @@ class icgcPSI:
                 self.Missatge(self.tr(u"Error a la taula samplingresult (v_std).\n")+query.lastError().text())
                 return
             self.dlg.progressBar.setValue(7)
-            if os.isatty(1):
+            if self.FlagDebug:
                 print 'Cargados datos de v_std'       
                 print '--- {} seconds ---'.format(time.time() - start_time)
             
             #-----------------------coherencia
-            if os.isatty(1):
+            if self.FlagDebug:
                 print 'Cargando datos de coherencia...' 
             start_time = time.time() #tiempo
             orden='INSERT INTO samplingresult(samplingfeature,value,name) '
@@ -1412,7 +1412,7 @@ class icgcPSI:
                 self.Missatge(self.tr(u"Error a la taula samplingresult (coherencia).\n")+query.lastError().text())
                 return
             self.dlg.progressBar.setValue(8)
-            if os.isatty(1):
+            if self.FlagDebug:
                 print 'Cargados datos de coherencia'       
                 print '--- {} seconds ---'.format(time.time() - start_time)
             
@@ -1428,7 +1428,7 @@ class icgcPSI:
                 if query.exec_(orden)==0:
                     self.Missatge(self.tr(u"Error al escriure a la taula observation.\n")+query.lastError().text())
                     return
-                if os.isatty(1):
+                if self.FlagDebug:
                     print 'Cargados datos en la tabla observation para la columna i={}'.format(i)      
                     print '--- {} seconds ---'.format( time.time() - start_time)
     
@@ -1456,7 +1456,7 @@ class icgcPSI:
                 if query.exec_(orden)==0:
                     self.Missatge(self.tr(u"Error taula idobstemporal (insert).\n")+query.lastError().text())
                     return
-                if os.isatty(1):
+                if self.FlagDebug:
                     print 'Creada tabla idobstemporal para la columna i={}'.format(i)       
                     print '--- {} seconds ---'.format(time.time() - start_time)
                 
@@ -1468,7 +1468,7 @@ class icgcPSI:
                 if query.exec_(orden)==0:
                     self.Missatge(self.tr(u"Error al escriure a la taula observationresult.\n")+query.lastError().text())
                     return
-                if os.isatty(1):
+                if self.FlagDebug:
                     print 'Cargados datos en la tabla observationresult para la columna i={}'.format(i)       
                     print '--- {} seconds ---'.format(time.time() - start_time)  
                     
@@ -1480,7 +1480,7 @@ class icgcPSI:
                     return
                 self.dlg.progressBar.setValue(9+i)
                 
-                if os.isatty(1):
+                if self.FlagDebug:
                     print 'Borrada tabla idobstemporal para la columna i={}'.format(i)       
                     print '--- {} seconds ---'.format(time.time() - start_time)
 
@@ -1510,7 +1510,7 @@ class icgcPSI:
         Docstring: Funcion que escribe en la tabla samplingfeature, lo escribe todo
                     sin mirar repetidos ni nada
         '''
-        if os.isatty(1):
+        if self.FlagDebug:
             print 'Escribiendo en tabla samplingfeature...' 
             
         start_time = time.time() #tiempo
@@ -1560,7 +1560,7 @@ class icgcPSI:
             self.Missatge(self.tr(u"Error taula idssamptemporal (end drop).\n")+query.lastError().text())
             return True 
 
-        if os.isatty(1):
+        if self.FlagDebug:
             print 'Obtenidos samplingfeatureid de los puntos'       
             print '--- {} seconds ---'.format(time.time() - start_time)        
         
@@ -1575,7 +1575,7 @@ class icgcPSI:
         2 - Añades estos puntos a la tabla spatialsamplingfeature
         3 - Buscas el spatialsamplingid de los puntos de la tabla temporal
         '''
-        if os.isatty(1):
+        if self.FlagDebug:
             print 'Escribiendo en tabla spatialsampling...'         
         
         start_time = time.time() #tiempo
@@ -1585,7 +1585,7 @@ class icgcPSI:
             self.Missatge(self.tr(u"Error taula temporal (alter idsspatialsamp).\n")+query.lastError().text())
             return True 
 
-        if os.isatty(1):
+        if self.FlagDebug:
             print 'Buscando registros repetidos en spatialsampling y actualizando...'
             
         orden='INSERT INTO spatialsamplingfeature (geophobject,geophobjectset) '
@@ -1617,7 +1617,7 @@ class icgcPSI:
             self.Missatge(self.tr(u"Error taula idspatialsamptemporal (truncate).\n")+query.lastError().text())
             return True
 
-        if os.isatty(1):
+        if self.FlagDebug:
             print 'Escribiendo en tabla idspatialsamptemporal...' 
             
         orden='INSERT INTO idspatialsamptemporal (id_sptfeat) '
@@ -1632,7 +1632,7 @@ class icgcPSI:
             error=True
             return error
 
-        if os.isatty(1):
+        if self.FlagDebug:
             print 'Escribiendo ids en tabla temporal...'  
         #ya tenemos la tabla idspatialsamptemporal llena, ahora pasamos los datos a la tabla temporal igualando las primary keys 
         orden='UPDATE temporal SET idsspatialsamp=id_sptfeat FROM idspatialsamptemporal WHERE temporal.ids=idspatialsamptemporal.id;'
@@ -1646,7 +1646,7 @@ class icgcPSI:
             self.Missatge(self.tr(u"Error taula idspatialsamptemporal (end drop).\n")+query.lastError().text())
             return True 
 
-        if os.isatty(1):
+        if self.FlagDebug:
             print 'Obtenidos spatialsamplingfeatureid de los puntos'       
             print '--- {} seconds ---'.format(time.time() - start_time)        
 
@@ -1660,7 +1660,7 @@ class icgcPSI:
         2- Añades estos puntos a la tabla geophobject
         3- Buscas el geophobject.id de los puntos que tienes en la tabla temporal
         '''
-        if os.isatty(1):
+        if self.FlagDebug:
             print 'Escribiendo en tabla geophobject...' 
             
         error=False
@@ -1672,7 +1672,7 @@ class icgcPSI:
             error=True
             return error
 
-        if os.isatty(1):
+        if self.FlagDebug:
             print 'Buscando registros repetidos en geophobject y actualizando...'
             
         orden='INSERT INTO geophobject (inspireid, geologiccollection, projectedgeometry,height) ' 
@@ -1708,7 +1708,7 @@ class icgcPSI:
             error=True
             return error
 
-        if os.isatty(1):
+        if self.FlagDebug:
             print 'Escribiendo en tabla idgeotemporal...'
             
         orden='INSERT INTO idgeotemporal (id_geo) '
@@ -1722,7 +1722,7 @@ class icgcPSI:
             error=True
             return error
 
-        if os.isatty(1):
+        if self.FlagDebug:
             print 'Escribiendo ids en tabla temporal...' 
             
         #ya tenemos la tabla idgeotemporal llena, ahora pasamos los datos a la tabla temporal igualando las primary keys 
@@ -1739,7 +1739,7 @@ class icgcPSI:
             error=True
             return error 
 
-        if os.isatty(1):
+        if self.FlagDebug:
             print 'Obtenidos geophobjectid de los puntos'       
             print '--- {} seconds ---'.format(time.time() - start_time)        
         return error
@@ -1769,7 +1769,7 @@ class icgcPSI:
             self.Missatge(self.tr(u"Error taula temporal (truncate).\n")+query.lastError().text())
             return True #devuelve error            
 
-        if os.isatty(1):
+        if self.FlagDebug:
             print 'Importando datos del csv a la tabla temporal...'   
             
         start_time = time.time() #tiempo
@@ -1802,7 +1802,7 @@ class icgcPSI:
                 self.Missatge(self.tr(u"Error taula temporal (insert values).\n")+query.lastError().text())
                 return True #devuelve error                
             
-        if os.isatty(1):
+        if self.FlagDebug:
             print 'Created temporal table in the database'       
             print '--- {} seconds ---'.format(time.time() - start_time)        
         arch.close()
@@ -1818,7 +1818,7 @@ class icgcPSI:
     def rename_listfiles(self,path_dir,list_files):
         #renombramos las fechas de los archivos (las que aparecen en su nombre) con las fechas de la primera y
         #ultima columna de datos.
-        if os.isatty(1):
+        if self.FlagDebug:
             print 'renombrando archivos...'         
         
         lista_archivos=[]
@@ -1838,7 +1838,7 @@ class icgcPSI:
 
     def prelectura(self,archivo,header):
         
-        if os.isatty(1):
+        if self.FlagDebug:
             print 'Prelectura del archivo...' 
             
         archivo=open(archivo,'r')
@@ -1869,7 +1869,7 @@ class icgcPSI:
         archivo.close()
         geometry=[U1,U2,U3,U4] 
     
-        if os.isatty(1):
+        if self.FlagDebug:
             print 'Prelectura finalizada' 
         
         return header,geometry,maxrow
@@ -2355,7 +2355,7 @@ class icgcPSI:
         self.dlg.listWidget.clear()
         self.show_observationname(query,idcampaign,idgeoset)
         
-        if os.isatty(1):
+        if self.FlagDebug:
             print 'Informacion de la campaña seleccionada'    
             print '--- {} seconds ---'.format(time.time() - start_time)
 
@@ -2381,7 +2381,7 @@ class icgcPSI:
         for ind,obs in enumerate(observacion):
             self.dlg.listWidget.addItems([obs+'_'+fecha_in[ind]+'_'+fecha_end[ind]])            
      
-        if os.isatty(1):
+        if self.FlagDebug:
             print 'Mostrar los tipos de observaciones existentes'    
             print '--- {} seconds ---'.format(time.time() - start_time)
   
@@ -2477,20 +2477,86 @@ class icgcPSI:
         sampfeat_enddate=observacion.split('_')[3] #YYYYMM
         medida_zona=observacion.split('_')[0]+'_'+observacion.split('_')[1]
         
-        if os.isatty(1):
+        if self.FlagDebug:
             print 'Borrando la observacion {} ...'.format(observacion) 
             
-        orden='DELETE FROM samplingfeature where samplingfeatureid IN ( '
-        orden+='select samplingfeature from samplingresult where samplingresult.name LIKE \'{}%\' '.format(medida_zona)
-        orden+='intersect '
-        orden+='SELECT samplingfeatureid FROM samplingfeature WHERE ' 
-        orden+='to_char(validtime_begin,\'YYYYMM\')=\'{}\' AND to_char(validtime_end,\'YYYYMM\')=\'{}\' '.format(sampfeat_inidate,sampfeat_enddate) 
-        orden+='AND spatialsamplingfeature IN ' 
-        orden+='(select spatialsamplingid from spatialsamplingfeature where geophobjectset={}));'.format(idgeoset[0])     
+        #borramos la tabla samplingfeature y todo lo que hay por debajo (no funciona los delete on cascade
+        # tarda demasiado tiempo)
         
+        # buscamos lo que hemos de borrar de la tabla samplingfeature y lo guardamos en una tabla temporal
+        orden='DROP table if exists deltemporal;' #borramos la tabla si ya existe
         if query.exec_(orden)==0:
-            self.Missatge(self.tr(u"Error a l'esborrar l' observacio. \n")+query.lastError().text())
+            self.Missatge(self.tr(u"Error al borrar tabla deltemporal. \n")+query.lastError().text())
             return True 
+        orden='CREATE TABLE deltemporal (id SERIAL PRIMARY KEY,iddel int);' #la creamos
+        if query.exec_(orden)==0:
+            self.Missatge(self.tr(u"Error al crear la tabla deltemporal. \n")+query.lastError().text())
+            return True 
+        orden='TRUNCATE deltemporal RESTART IDENTITY;' #reiniciamos las id's
+        if query.exec_(orden)==0:
+            self.Missatge(self.tr(u"Error al crear la tabla deltemporal. \n")+query.lastError().text())
+            return True 
+        orden='INSERT INTO deltemporal (iddel)( '
+        orden+='SELECT samplingfeature FROM samplingresult WHERE samplingresult.name LIKE \'{}%\' '.format(medida_zona) 
+        orden+='INTERSECT '
+        orden+='SELECT samplingfeatureid FROM samplingfeature WHERE '
+        orden+='to_char(validtime_begin,\'YYYYMM\')=\'{}\' AND to_char(validtime_end,\'YYYYMM\')=\'{}\' '.format(sampfeat_inidate,sampfeat_enddate) 
+        orden+='AND spatialsamplingfeature IN '
+        orden+='(SELECT spatialsamplingid FROM spatialsamplingfeature WHERE geophobjectset={}));'.format(idgeoset[0]) 
+        if query.exec_(orden)==0:
+            self.Missatge(self.tr(u"Error al insertar en la tabla deltemporal. \n")+query.lastError().text())
+            return True
+            
+        #borramos observationresult
+        orden='DELETE FROM observationresult WHERE observation IN ( '
+        orden+='SELECT observationid FROM observation WHERE samplingfeature IN ( ' 
+        orden+='SELECT iddel FROM deltemporal));'        
+        if query.exec_(orden)==0:
+            self.Missatge(self.tr(u"Error al borrar registros tabla observationresult.\n")+query.lastError().text())
+            return True            
+        
+        #borramos observation
+        orden='ALTER TABLE observation DISABLE TRIGGER ALL;'
+        if query.exec_(orden)==0:
+            self.Missatge(self.tr(u"Error alter table observation (disable).\n")+query.lastError().text())
+            return True
+        orden='DELETE FROM observation WHERE samplingfeature IN ( '
+        orden+='SELECT iddel FROM deltemporal);'
+        if query.exec_(orden)==0:
+            self.Missatge(self.tr(u"Error al borrar registros tabla observation.\n")+query.lastError().text())
+            return True
+        orden='ALTER TABLE observation ENABLE TRIGGER ALL;'      
+        if query.exec_(orden)==0:
+            self.Missatge(self.tr(u"Error alter table observation (enable).\n")+query.lastError().text())
+            return True
+        
+        #borramos samplingresult
+        orden='DELETE FROM samplingresult WHERE samplingfeature IN ( '
+        orden+='SELECT iddel FROM deltemporal);'
+        if query.exec_(orden)==0:
+            self.Missatge(self.tr(u"Error al borrar registros tabla samplingresult.\n")+query.lastError().text())
+            return True        
+            
+        #borramos samplingfeature
+        orden='ALTER TABLE samplingfeature DISABLE TRIGGER ALL;'
+        if query.exec_(orden)==0:
+            self.Missatge(self.tr(u"Error alter table samplingfeature (disable).\n")+query.lastError().text())
+            return True
+        orden='DELETE FROM samplingfeature WHERE samplingfeatureid IN ( '
+        orden+='SELECT iddel FROM deltemporal);'
+        if query.exec_(orden)==0:
+            self.Missatge(self.tr(u"Error al borrar registros tabla samplingfeature.\n")+query.lastError().text())
+            return True
+        orden='ALTER TABLE samplingfeature ENABLE TRIGGER ALL;'
+        if query.exec_(orden)==0:
+            self.Missatge(self.tr(u"Error alter table samplingfeature (enable).\n")+query.lastError().text())
+            return True        
+        
+        #destruimos la tabla temporal
+        orden='DROP table IF EXISTS deltemporal;'
+        if query.exec_(orden)==0:
+            self.Missatge(self.tr(u"Error drop table deltemporal.\n")+query.lastError().text())
+            return True           
    
         #borramos la observacion de la tabla log_obs
         orden='DELETE FROM log_obs WHERE name=\'{}\' AND '.format(medida_zona)
@@ -2501,7 +2567,7 @@ class icgcPSI:
             self.Missatge(self.tr(u"Error l'esborrar la taula log_obs \n")+query.lastError().text())
             return True   
         
-        if os.isatty(1):
+        if self.FlagDebug:
             print 'Borrado todo para la observacion {}'.format(observacion)    
             print '--- {} seconds ---'.format(time.time() - start_time)        
         
@@ -2574,39 +2640,39 @@ class icgcPSI:
                 idcamp=query.value(0)
             
             #borramos los procesados que tiene dependencia del geoset
-            if os.isatty(1):
+            if self.FlagDebug:
                 print 'Borrando procesados asociados...'  
             orden='DELETE FROM processes WHERE geophobjectset IN '
-            orden='(SELECT geophobjectsetid FROM geophobjectset WHERE campaign={})'.format(idcamp)            
+            orden+='(SELECT geophobjectsetid FROM geophobjectset WHERE campaign={})'.format(idcamp)            
             if query.exec_(orden)==0:
                 self.Missatge(self.tr(u"Error al esborrar els processats.\n")+query.lastError().text())
                 return
-            if os.isatty(1):
+            if self.FlagDebug:
                 print 'Procesados borrados.' 
                 
             #borramos la tabla log_obs
-            if os.isatty(1):
+            if self.FlagDebug:
                 print 'Borrando campaña de la tabla log_obs...'
             orden='DELETE FROM log_obs WHERE campaignid={};'.format(idcamp) 
             if query.exec_(orden)==0:
                self.Missatge(self.tr(u"Error al esborrar la campanya de la taula log_obs.\n")+query.lastError().text())
                return 
-            if os.isatty(1):
+            if self.FlagDebug:
                 print 'Campaña en la tabla log_obs borrada.'
                 
             #borramos geophobjectset (y borra todo lo que tiene por debajo)
-            if os.isatty(1):
+            if self.FlagDebug:
                 print 'Borrando geosets de la campaña en la tabla geoset...'
             orden='DELETE FROM geophobjectset WHERE campaign={};'.format(idcamp)
             if query.exec_(orden)==0:
                 self.Missatge(self.tr(u"Error al borrar la taula geophobjset.\n")+query.lastError().text())
                 return
-            if os.isatty(1):
+            if self.FlagDebug:
                 print 'Geosets de la campaña borrados.'
             self.dlg.CBdadesgeoset.clear()
             
             #limpiar la tabla campaña
-            if os.isatty(1):
+            if self.FlagDebug:
                 print 'Borrando campaña de la tabla campaign...'
             orden='DELETE FROM campaign WHERE campaignid={};'.format(idcamp)
             if query.exec_(orden) ==0:
@@ -2619,7 +2685,7 @@ class icgcPSI:
                 self.dlg.CBcampdades.removeItem(self.dlg.CBcampdades.findText(registro))
                 self.dlg.listWidget.clear()
                
-            if os.isatty(1):
+            if self.FlagDebug:
                 print 'Campaña borrada {}'.format(registro)    
                 print '--- {} seconds ---'.format(time.time() - start_time)   
             
@@ -2645,7 +2711,6 @@ class icgcPSI:
             if not lyr:
                 self.Missatge(self.tr(u"Error al carregar les dades\n"))
                 return
-            print lyr.isValid()
 
             QgsMapLayerRegistry.instance().addMapLayer(lyr)
             
