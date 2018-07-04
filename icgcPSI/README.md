@@ -7,6 +7,9 @@ TODO:
 - Problema con \\ y simbolos raros (editar a mano el nombre cuando se modifique).
 - Implementar el borrado de una campaña sin hacer uso del delete on cascade (que es lo que da problema)
 
+(4/7/2018)
+- Implemetado el borrado de las campañas sin hacer uso del delete on cascade (manualmente tabla por tabla)
+
 (2/7/2018)
 - Arreglado el problema de ir lento al borrar. Ya podemos borrar rapidamente una observacion.
 - Añadida flag self.FlagDebug para mostrar ocultar los print.
