@@ -5,7 +5,6 @@ ICGC plugin for PSI measurements.
 TODO:
 - Implementar el ST_Convex_hull para la geometría de todos los puntos.
 - Problema con \\ y simbolos raros (editar a mano el nombre cuando se modifique).
-- Implementar el borrado de una campaña sin hacer uso del delete on cascade (que es lo que da problema)
 
 (4/7/2018)
 - Implemetado el borrado de las campañas sin hacer uso del delete on cascade (manualmente tabla por tabla)
