@@ -44,7 +44,7 @@ class icgcPSI:
     Flagprocessat=False
     Flagcampaing=True
     conectardb={}
-    FlagDebug=True
+    FlagDebug=False
 
     def __init__(self, iface):
         """Constructor.
