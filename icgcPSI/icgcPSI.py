@@ -44,7 +44,7 @@ class icgcPSI:
     Flagprocessat=False
     Flagcampaing=True
     conectardb={}
-    FlagDebug=False
+    FlagDebug=True
 
     def __init__(self, iface):
         """Constructor.
@@ -2650,6 +2650,109 @@ class icgcPSI:
             if self.FlagDebug:
                 print 'Procesados borrados.' 
                 
+            #Extraer las ids de geoset a borrar (pueden ser varias ids asociadas a una misma campaña)
+            idsgeoset=[] #lista a borrar            
+            orden='SELECT geophobjectsetid FROM geophobjectset WHERE campaign={};'.format(idcamp)
+            if query.exec_(orden)==0:
+                self.Missatge(self.tr(u"Error al buscar geosetids in geoset\n")+query.lastError().text())
+                return
+            while query.next():
+                idsgeoset.append(query.value(0))
+            if self.FlagDebug:
+                print 'Lista idsgeoset a borrar' , idsgeoset
+            
+            for ids in idsgeoset: #abrimos bucle 
+            
+                #creamos una tabla temporal que contiene todas las ids de la tabla samplingresult que necesitaremos para borrar
+                orden='DROP table if exists deltemporal;' #borramos la tabla si ya existe
+                if query.exec_(orden)==0:
+                    self.Missatge(self.tr(u"Error al borrar tabla deltemporal. \n")+query.lastError().text())
+                    return True 
+                orden='CREATE TABLE deltemporal (id SERIAL PRIMARY KEY,iddel int);' #la creamos
+                if query.exec_(orden)==0:
+                    self.Missatge(self.tr(u"Error al crear la tabla deltemporal. \n")+query.lastError().text())
+                    return True 
+                orden='TRUNCATE deltemporal RESTART IDENTITY;' #reiniciamos las id's
+                if query.exec_(orden)==0:
+                    self.Missatge(self.tr(u"Error al crear la tabla deltemporal. \n")+query.lastError().text())
+                    return True   
+                    
+                #populamos la tabla temporal   
+                orden='INSERT INTO deltemporal (iddel)( ' 
+                orden+='SELECT samplingfeatureid FROM ' 
+                orden+='samplingfeature WHERE spatialsamplingfeature IN '
+                orden+='(SELECT spatialsamplingid FROM spatialsamplingfeature ' 
+                orden+='WHERE geophobjectset={}));'.format(ids)
+                if query.exec_(orden)==0:
+                    self.Missatge(self.tr(u"Error al llenar la tabla deltemporal. \n")+query.lastError().text())
+                    return True                
+
+                #borramos observationresult
+                orden='DELETE FROM observationresult WHERE observation IN ( '
+                orden+='SELECT observationid FROM observation WHERE samplingfeature IN ( ' 
+                orden+='SELECT iddel FROM deltemporal));'        
+                if query.exec_(orden)==0:
+                    self.Missatge(self.tr(u"Error al borrar registros tabla observationresult.\n")+query.lastError().text())
+                    return True            
+        
+                #borramos observation
+                orden='ALTER TABLE observation DISABLE TRIGGER ALL;'
+                if query.exec_(orden)==0:
+                    self.Missatge(self.tr(u"Error alter table observation (disable).\n")+query.lastError().text())
+                    return True
+                orden='DELETE FROM observation WHERE samplingfeature IN ( '
+                orden+='SELECT iddel FROM deltemporal);'
+                if query.exec_(orden)==0:
+                    self.Missatge(self.tr(u"Error al borrar registros tabla observation.\n")+query.lastError().text())
+                    return True
+                orden='ALTER TABLE observation ENABLE TRIGGER ALL;'      
+                if query.exec_(orden)==0:
+                    self.Missatge(self.tr(u"Error alter table observation (enable).\n")+query.lastError().text())
+                    return True
+        
+                #borramos samplingresult
+                orden='DELETE FROM samplingresult WHERE samplingfeature IN ( '
+                orden+='SELECT iddel FROM deltemporal);'
+                if query.exec_(orden)==0:
+                    self.Missatge(self.tr(u"Error al borrar registros tabla samplingresult.\n")+query.lastError().text())
+                    return True          
+         
+                #borramos samplingfeature
+                orden='ALTER TABLE samplingfeature DISABLE TRIGGER ALL;'
+                if query.exec_(orden)==0:
+                    self.Missatge(self.tr(u"Error alter table samplingfeature (disable).\n")+query.lastError().text())
+                    return True
+                orden='DELETE FROM samplingfeature WHERE samplingfeatureid IN ( '
+                orden+='SELECT iddel FROM deltemporal);'
+                if query.exec_(orden)==0:
+                    self.Missatge(self.tr(u"Error al borrar registros tabla samplingfeature.\n")+query.lastError().text())
+                    return True
+                orden='ALTER TABLE samplingfeature ENABLE TRIGGER ALL;'
+                if query.exec_(orden)==0:
+                    self.Missatge(self.tr(u"Error alter table samplingfeature (enable).\n")+query.lastError().text())
+                    return True        
+        
+                #destruimos la tabla temporal
+                orden='DROP table IF EXISTS deltemporal;'
+                if query.exec_(orden)==0:
+                    self.Missatge(self.tr(u"Error drop table deltemporal.\n")+query.lastError().text())
+                    return True         
+         
+                #borramos spatialssamplingfeature
+                orden='ALTER TABLE spatialsamplingfeature DISABLE TRIGGER ALL;'
+                if query.exec_(orden)==0:
+                    self.Missatge(self.tr(u"Error alter table spatialsamplingfeature (disable).\n")+query.lastError().text())
+                    return True
+                orden='DELETE FROM spatialsamplingfeature WHERE geophobjectset={};'.format(ids)
+                if query.exec_(orden)==0:
+                    self.Missatge(self.tr(u"Error al borrar registros tabla spatialsamplingfeature.\n")+query.lastError().text())
+                    return True
+                orden='ALTER TABLE spatialsamplingfeature ENABLE TRIGGER ALL;'
+                if query.exec_(orden)==0:
+                    self.Missatge(self.tr(u"Error alter table spatialsamplingfeature (enable).\n")+query.lastError().text())
+                    return True          
+            #end ids loop______________
+         
             #borramos la tabla log_obs
             if self.FlagDebug:
                 print 'Borrando campaña de la tabla log_obs...'
@@ -2663,10 +2766,19 @@ class icgcPSI:
             #borramos geophobjectset (y borra todo lo que tiene por debajo)
             if self.FlagDebug:
                 print 'Borrando geosets de la campaña en la tabla geoset...'
+                
+            orden='ALTER TABLE geophobjectset DISABLE TRIGGER ALL;'
+            if query.exec_(orden)==0:
+                self.Missatge(self.tr(u"Error alter table geophobjectset (disable).\n")+query.lastError().text())
+                return                
             orden='DELETE FROM geophobjectset WHERE campaign={};'.format(idcamp)
             if query.exec_(orden)==0:
                 self.Missatge(self.tr(u"Error al borrar la taula geophobjset.\n")+query.lastError().text())
                 return
+            orden='ALTER TABLE geophobjectset ENABLE TRIGGER ALL;'
+            if query.exec_(orden)==0:
+                self.Missatge(self.tr(u"Error alter table geophobjectset (enable).\n")+query.lastError().text())
+                return                
             if self.FlagDebug:
                 print 'Geosets de la campaña borrados.'
             self.dlg.CBdadesgeoset.clear()
